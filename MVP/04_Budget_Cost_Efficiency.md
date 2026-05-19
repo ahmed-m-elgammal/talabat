@@ -1,265 +1,211 @@
-# 04 — Budget & Cost Efficiency Plan
+# 04 — Budget & Cost Efficiency
 
-## 1. Overview
+## Overview
 
-This plan outlines the budget requirements, cost optimization strategies, and team sizing for building and operating the Talabat-like MVP. The goal is to deliver a production-quality delivery marketplace that handles 50-100 vendors and 100-300 daily orders at the lowest sustainable cost, while preserving the architecture's ability to scale to medium-scale operations (Phase 2).
-
-The cost model assumes a **single-country deployment** (e.g., UAE or Egypt) with cloud infrastructure on AWS or GCP, a small engineering team, and third-party service integrations (Stripe, Firebase, SMS gateway).
+This plan outlines the cost structure for building and running the Talabat MVP across infrastructure, third-party services, and team resources. The MVP is designed for cost efficiency: a modular monolith on a single server, a single payment gateway, Firebase's free tier for real-time features, and a small focused team. The goal is to reach market validation with minimal spend while maintaining a clear upgrade path for scale.
 
 ---
 
-## 2. Team Sizing
+## Infrastructure Costs
 
-### 2.1 MVP Team Composition
+### T4.1 — Compute & Hosting (Monthly)
 
-| Role | Count | Focus Areas |
-|------|-------|-------------|
-| Backend Engineer | 1-2 | API development, database, real-time, payments |
-| Flutter/Mobile Engineer | 1-2 | Customer app, rider app, vendor portal |
-| UI/UX Designer | 1 | Design system, screen designs, prototypes |
-| Product Manager | 1 (part-time) | Requirements, prioritization, stakeholder management |
-| DevOps / QA | 1 (shared) | CI/CD, infrastructure, testing, monitoring |
-| **Total** | **5-7** | |
+**Description:** The MVP backend runs as a single monolith on a cloud VM. A single PostgreSQL instance and a single Redis instance handle all data needs. No Kubernetes, no multi-region, no load balancers for MVP.
 
-### 2.2 Sprint & Timeline Estimate
+**Dependencies:** None.
 
-| Phase | Duration | Focus |
-|-------|----------|-------|
-| Sprint 1-2 (Weeks 1-4) | 4 weeks | Core infrastructure, auth, vendor listing, menu |
-| Sprint 3-4 (Weeks 5-8) | 4 weeks | Cart, checkout, payment, order creation |
-| Sprint 5-6 (Weeks 9-12) | 4 weeks | Dispatch, tracking, push notifications |
-| Sprint 7-8 (Weeks 13-16) | 4 weeks | Search, chat, polish, testing, launch prep |
-| **Total MVP** | **16 weeks** | |
+**Acceptance Criteria:**
+- [ ] Single cloud VM (4 vCPU, 8GB RAM) — estimated $80–120/month (AWS t3.xlarge or equivalent)
+- [ ] PostgreSQL managed instance (db.t3.medium) — estimated $50–80/month
+- [ ] Redis managed instance (cache.t3.small) — estimated $20–30/month
+- [ ] Total compute: ~$150–230/month
+- [ ] Auto-scaling NOT configured for MVP (manual scale-up if needed)
+- [ ] Single availability zone deployment (no cross-AZ redundancy for MVP)
 
-### 2.3 Team Cost Estimate (4 months)
+**Phase:** MVP
 
-| Role | Monthly Cost (USD) | 4-Month Total |
-|------|-------------------|---------------|
-| Backend Engineer x2 | $8,000-12,000 each | $64,000-96,000 |
-| Flutter Engineer x2 | $7,000-10,000 each | $56,000-80,000 |
-| UI/UX Designer | $5,000-8,000 | $20,000-32,000 |
-| Product Manager (part-time) | $3,000-5,000 | $12,000-20,000 |
-| DevOps/QA (shared) | $4,000-6,000 | $16,000-24,000 |
-| **Team Total** | | **$168,000-252,000** |
-
-> **Note**: Costs vary significantly by region. Above ranges assume mid-senior level engineers in MENA/South Asia. US/EU rates would be 2-3x higher.
+**Cost Estimate:** $150–230/month
 
 ---
 
-## 3. Infrastructure Costs
+### T4.2 — Firebase Realtime Database (Monthly)
 
-### 3.1 Cloud Infrastructure (Monthly)
+**Description:** Firebase RTDB handles live order tracking (rider GPS, order status) and rider-customer chat. The MVP uses the Flame plan ($25/month) which covers 1GB stored and 10GB/month downloaded — sufficient for 100–500 daily orders.
 
-| Component | Service | Spec | Monthly Cost (USD) |
-|-----------|---------|------|-------------------|
-| Application Server | AWS ECS / GCP Cloud Run | 2 vCPU, 4GB RAM x2 | $100-200 |
-| PostgreSQL | AWS RDS / GCP Cloud SQL | db.t3.medium (2 vCPU, 4GB) | $80-150 |
-| Redis | AWS ElastiCache / GCP Memorystore | cache.t3.small | $30-60 |
-| Firebase RTDB | Firebase | Blaze plan, ~1GB stored, ~10GB downloaded | $50-100 |
-| FCM | Firebase | Free (unlimited messages) | $0 |
-| Load Balancer | AWS ALB / GCP LB | 1 LB + minimal traffic | $20-40 |
-| S3/GCS Storage | AWS S3 / GCP Cloud Storage | 50GB images + backups | $5-10 |
-| CDN | CloudFront / Cloud CDN | 100GB/month delivery | $10-20 |
-| Monitoring | New Relic (free tier) / Sentry | Basic APM + error tracking | $0-50 |
-| DNS & SSL | Route53 / Cloud DNS + ACM | 1 domain, 1 cert | $5-10 |
-| **Monthly Total** | | | **$300-640** |
+**Dependencies:** None.
 
-### 3.2 Third-Party Services (Monthly)
+**Acceptance Criteria:**
+- [ ] Firebase project with RTDB enabled
+- [ ] Security rules enforce user-specific access (customers can only read their own orders)
+- [ ] Data volume stays within Flame plan limits (< 10GB/month download for MVP scale)
+- [ ] Monitor usage dashboard for overages
 
-| Service | Purpose | Pricing Model | Monthly Cost (USD) |
-|---------|---------|--------------|-------------------|
-| Stripe | Payment processing | 2.9% + $0.30 per transaction | Variable (revenue offset) |
-| SMS Gateway (Twilio/Vonage) | OTP delivery | ~$0.05 per SMS | $50-200 (100-300 orders/day) |
-| Google Maps API | Map, geocoding, directions | $7 per 1000 requests (after free tier) | $50-150 |
-| Firebase Auth | Custom token auth | Free (Blaze plan) | $0 |
-| Sentry | Error tracking | Free tier (5K errors/month) | $0 |
-| GitHub | Repository + Actions | Free for public, Team for private | $0-20 |
-| **Monthly Total** | | | **$100-370** |
+**Phase:** MVP
 
-### 3.3 One-Time Setup Costs
-
-| Item | Cost (USD) |
-|------|-----------|
-| Domain registration | $10-20 |
-| SSL certificate (if not using free ACM) | $0-50 |
-| App store developer accounts (Apple + Google) | $99 + $25 = $124 |
-| Design tools (Figma) | $0-15/month |
-| **One-Time Total** | **$134-209** |
-
-### 3.4 Total Cost Summary (4-Month MVP Build)
-
-| Category | Low Estimate | High Estimate |
-|----------|-------------|---------------|
-| Team | $168,000 | $252,000 |
-| Cloud infrastructure (4 months) | $1,200 | $2,560 |
-| Third-party services (4 months) | $400 | $1,480 |
-| One-time costs | $134 | $209 |
-| **Total MVP Build** | **$169,734** | **$256,249** |
-
-### 3.5 Monthly Operating Cost (Post-Launch)
-
-| Category | Low | High |
-|----------|-----|------|
-| Cloud infrastructure | $300 | $640 |
-| Third-party services | $100 | $370 |
-| Team (maintenance, reduced) | $40,000 | $60,000 |
-| **Monthly Operating** | **$40,400** | **$61,010** |
+**Cost Estimate:** $25/month (Flame plan)
 
 ---
 
-## 4. Cost Efficiency Strategies
+### T4.3 — Payment Gateway Fees (Per Transaction)
 
-### 4.1 Infrastructure Efficiency
+**Description:** Payment processing costs are transaction-based. Using Stripe or Checkout.com for card payments. Cash on delivery has no gateway fee but has operational costs for cash handling.
 
----
+**Dependencies:** T1.4 (payment service).
 
-#### Strategy INF-EFF-01: Use Serverless Where Possible
-**Description**: Use Cloud Run (GCP) or Fargate (AWS) for the backend instead of always-on EC2 instances. Scale to zero during low-traffic periods (e.g., overnight in early stages). This reduces compute costs by 40-60% compared to always-on instances.
-**Savings**: $40-120/month
-**Trade-off**: Cold start latency (~2-5s) for first request after scale-to-zero. Mitigate with minimum 1 instance during business hours.
+**Acceptance Criteria:**
+- [ ] Stripe/Checkout.com pricing: 2.9% + 30¢ per card transaction (standard MENA rates may vary)
+- [ ] No monthly minimum or setup fee for MVP
+- [ ] Cash on delivery: no gateway fee but factor in ~2% cash handling cost
+- [ ] Target 70% card / 30% cash split based on MENA market data
 
----
+**Phase:** MVP
 
-#### Strategy INF-EFF-02: PostgreSQL-Only for MVP Search
-**Description**: Use PostgreSQL full-text search with `pg_trgm` extension instead of running a separate Elasticsearch cluster. For 50-100 vendors, PostgreSQL handles search with acceptable latency (< 300ms). Elasticsearch adds $100-200/month and operational complexity.
-**Savings**: $100-200/month
-**Trade-off**: Limited relevance tuning, no advanced features like fuzzy matching on typos. Acceptable for MVP scale.
+**Cost Estimate:** ~3% of card transaction volume
 
 ---
 
-#### Strategy INF-EFF-03: Firebase RTDB over Custom WebSocket Server
-**Description**: Use Firebase Realtime Database for order tracking instead of building a custom WebSocket infrastructure. Firebase provides built-in offline support, automatic reconnection, and security rules — saving significant development time and infrastructure cost.
-**Savings**: 4-6 weeks of backend development + $50-100/month server cost
-**Trade-off**: Firebase vendor lock-in, cost scales with connections (~$0.10/GB downloaded). Plan migration to custom WebSocket for Phase 2.
+### T4.4 — Push Notifications (Monthly)
+
+**Description:** FCM (Firebase Cloud Messaging) for push notifications is free for unlimited messages. No need for Braze engagement platform in MVP — simple transactional pushes only.
+
+**Dependencies:** None.
+
+**Acceptance Criteria:**
+- [ ] FCM configured for Android and iOS
+- [ ] Transactional pushes only: order status updates, delivery updates
+- [ ] No marketing/engagement push campaigns in MVP
+- [ ] No third-party push service (Braze, OneSignal) needed for MVP
+
+**Phase:** MVP
+
+**Cost Estimate:** $0/month (FCM is free)
 
 ---
 
-#### Strategy INF-EFF-04: Image Optimization via CDN
-**Description**: Serve all vendor/item images through CDN with on-the-fly resizing (CloudFront + Lambda@edge or Cloud CDN). Request specific sizes via URL parameters (e.g., `?w=200&h=200`). Use WebP format for supported clients. This reduces bandwidth costs by 50-70%.
-**Savings**: $20-50/month bandwidth
-**Trade-off**: Slightly more complex image URL management.
+### T4.5 — SMS/OTP Costs (Monthly)
+
+**Description:** OTP delivery via SMS. Cost depends on volume and provider. Using a regional SMS provider (e.g., Twilio, MessageBird) with MENA coverage.
+
+**Dependencies:** T1.1 (user service).
+
+**Acceptance Criteria:**
+- [ ] SMS cost per OTP: ~$0.02–0.05 per message (varies by country)
+- [ ] Rate limiting (3 OTPs per 5 minutes) controls cost
+- [ ] Estimated volume: 500 OTPs/month (500 new registrations + password resets)
+- [ ] Monthly cost: ~$10–25/month
+
+**Phase:** MVP
+
+**Cost Estimate:** $10–25/month
 
 ---
 
-#### Strategy INF-EFF-05: Redis for Caching Everything
-**Description**: Aggressively cache vendor listings (5 min TTL), menus (5 min TTL), search results (5 min TTL), and cart state (24h TTL) in Redis. This reduces PostgreSQL load by 70-80%, allowing a smaller database instance.
-**Savings**: $30-60/month (smaller DB instance)
-**Trade-off**: Eventual consistency for cached data. Mitigate with cache invalidation on updates.
+### T4.6 — CDN & Storage (Monthly)
+
+**Description:** Static asset delivery (vendor logos, menu item images) via CDN. Image storage on S3-compatible object storage.
+
+**Dependencies:** T1.2 (vendor service for image uploads).
+
+**Acceptance Criteria:**
+- [ ] S3-compatible storage for vendor logos and menu images (~5GB for 100 vendors)
+- [ ] CDN (CloudFront or equivalent) for image delivery
+- [ ] Cost: ~$1–5/month for storage + $5–15/month for CDN bandwidth
+- [ ] Image optimization: server-side resize and WebP conversion to reduce bandwidth
+
+**Phase:** MVP
+
+**Cost Estimate:** $6–20/month
 
 ---
 
-### 4.2 Development Efficiency
+### T4.7 — App Store Costs (Annual)
+
+**Description:** Developer accounts for publishing the mobile app.
+
+**Dependencies:** None.
+
+**Acceptance Criteria:**
+- [ ] Apple Developer Program: $99/year
+- [ ] Google Play Developer Account: $25 one-time
+- [ ] Total: ~$124 first year, $99/year ongoing
+
+**Phase:** MVP
+
+**Cost Estimate:** $124 first year
 
 ---
 
-#### Strategy DEV-EFF-01: Modular Monolith over Microservices
-**Description**: Build the backend as a single deployable unit with modular boundaries. This eliminates the need for: Kubernetes cluster, Istio service mesh, Kafka cluster, inter-service API contracts, distributed tracing setup, and separate deployment pipelines for each service.
-**Savings**: 4-8 weeks of infrastructure setup + $200-400/month operational cost
-**Trade-off**: Single deployment unit. Mitigate with clean module interfaces for future extraction.
+## Total MVP Monthly Cost Summary
+
+| Category | Monthly Cost |
+|----------|-------------|
+| Compute (VM + DB + Redis) | $150–230 |
+| Firebase RTDB | $25 |
+| SMS/OTP | $10–25 |
+| CDN & Storage | $6–20 |
+| Push Notifications | $0 |
+| **Subtotal (fixed)** | **$191–300/month** |
+| Payment Gateway | ~3% of card volume |
+| App Store | ~$10/month (annualized) |
+
+**Estimated total fixed cost: ~$200–310/month**
+
+At 100 daily orders with average order value (AOV) of AED 50 (~$13.60), monthly GMV ≈ $40,800. At 3% payment fee on 70% card transactions, payment costs ≈ $857/month. **Total operational cost: ~$1,060–1,170/month.**
 
 ---
 
-#### Strategy DEV-EFF-02: Stripe Only (Single Payment Gateway)
-**Description**: Use Stripe as the sole payment gateway for MVP. The production system uses dual gateways (Checkout.com + HyperPay) with country-specific routing. Stripe supports all card types, Apple Pay, and Google Pay with a single integration.
-**Savings**: 2-3 weeks of development + ongoing dual-gateway maintenance
-**Trade-off**: Stripe's 2.9% + $0.30 per transaction may be higher than regional gateways for specific markets. Revisit when expanding to countries with preferred local methods.
+## Team Budget
+
+### T4.8 — MVP Development Team
+
+**Description:** The minimum team needed to build and launch the MVP in 8–12 weeks. Small, cross-functional team with overlap between roles.
+
+**Dependencies:** None.
+
+**Acceptance Criteria:**
+- [ ] 1 Backend Developer (Node.js/Python + PostgreSQL + Redis) — full-time for 8–12 weeks
+- [ ] 1 Flutter Developer — full-time for 8–12 weeks
+- [ ] 1 UI/UX Designer — part-time (50%) for first 4 weeks (design system + screen designs), then advisory
+- [ ] 1 Product Manager / QA — part-time (50%) for requirements clarification and acceptance testing
+- [ ] No dedicated DevOps for MVP (backend dev handles deployment)
+- [ ] No dedicated iOS/Android native developers (Flutter handles both platforms)
+
+**Phase:** MVP
+
+**Cost Estimate:** Depends on market; estimated 2.5 FTE × 10 weeks
 
 ---
 
-#### Strategy DEV-EFF-03: Simplified Rider App (WebView + Native Map)
-**Description**: Instead of building a full Flutter rider app, create a simplified web-based rider interface with native map integration. The rider app has fewer screens and simpler interactions, making it suitable for a Progressive Web App or a Flutter app with web-view hybrid approach.
-**Savings**: 2-3 weeks of development
-**Trade-off**: Less native feel for riders. Mitigate with critical native features (GPS tracking, push notifications) via native plugins.
+## Phase 2 Budget Items (Not for MVP)
 
----
+### T4.P2.1 — Kubernetes Migration
+**Description:** Move from single VM to Kubernetes (EKS/GKE) with auto-scaling, multi-AZ, and service mesh. Cost increases to ~$500–1,500/month.
+**Phase:** Phase 2
 
-#### Strategy DEV-EFF-04: Seed Data & Realistic Fixtures
-**Description**: Create comprehensive seed data scripts that generate 50-100 realistic vendors with menus, operating hours, and locations. Use this for development, testing, and demos instead of relying on manual data entry or production data.
-**Savings**: Significant QA and demo preparation time
-**Trade-off**: Seed data may not cover all edge cases. Supplement with targeted test fixtures.
+### T4.P2.2 — Elasticsearch Cluster
+**Description:** Add Elasticsearch for full-text search with Arabic/English tokenization. Cost: ~$100–300/month for a small cluster.
+**Phase:** Phase 2
 
----
+### T4.P2.3 — Braze Engagement Platform
+**Description:** Marketing automation, lifecycle campaigns, in-app messages. Cost: $5,000–15,000/month depending on MAU.
+**Phase:** Phase 2
 
-### 4.3 Operational Efficiency
+### T4.P2.4 — Multi-Country Infrastructure
+**Description:** Per-country database clusters, geoDNS, and CDN PoPs. Multiplies compute costs by number of countries.
+**Phase:** Phase 2
 
----
+### T4.P2.5 — Kafka Event Streaming
+**Description:** Managed Kafka (Confluent/MSK) for event-driven architecture. Cost: ~$300–500/month for a small cluster.
+**Phase:** Phase 2
 
-#### Strategy OPS-EFF-01: Automated Vendor Onboarding
-**Description**: Build a self-service vendor onboarding flow where restaurants can register, upload their menu (CSV/Excel import), and configure operating hours without manual intervention. This reduces operations team headcount needed for vendor management.
-**Savings**: Reduced operations headcount by 1 FTE
-**Trade-off**: Menu import may have quality issues. Add validation and preview step.
+### T4.P2.6 — Monitoring & Observability Stack
+**Description:** New Relic/Sentry for APM, Prometheus/Grafana for infrastructure metrics, PagerDuty for alerting. Cost: $200–500/month.
+**Phase:** Phase 2
 
----
+### T4.P2.7 — Additional Payment Gateways
+**Description:** HyperPay for regional methods, Apple Pay/Google Pay integration, wallet infrastructure. Integration costs + per-transaction fees.
+**Phase:** Phase 2
 
-#### Strategy OPS-EFF-02: Basic Monitoring with Free Tiers
-**Description**: Use free tiers of Sentry (error tracking), New Relic (APM - 100GB free), and UptimeRobot (uptime monitoring) instead of premium monitoring stacks. For MVP traffic levels, free tiers are sufficient.
-**Savings**: $100-300/month
-**Trade-off**: Limited retention and alerting. Upgrade when scaling.
-
----
-
-#### Strategy OPS-EFF-03: Cash-on-Delivery as Default Payment
-**Description**: In markets where card adoption is low (e.g., Iraq, Jordan), default to cash-on-delivery. This reduces payment gateway costs and integration complexity while still enabling the core order flow.
-**Savings**: Stripe transaction fees for cash orders ($0)
-**Trade-off**: Cash handling requires manual reconciliation and carries risk of non-payment.
-
----
-
-## 5. Cost Scaling Projections
-
-### 5.1 Cost per Order
-
-| Phase | Daily Orders | Monthly Infrastructure | Cost per Order (Infra) |
-|-------|-------------|----------------------|----------------------|
-| MVP (Months 1-6) | 100-300 | $400-1,000 | $0.04-0.33 |
-| Growth (Months 7-12) | 500-2,000 | $800-2,000 | $0.01-0.13 |
-| Medium-Scale (Year 2) | 5,000-20,000 | $3,000-8,000 | $0.005-0.05 |
-
-### 5.2 When to Invest More
-
-| Trigger | Investment | Rationale |
-|---------|-----------|-----------|
-| > 500 orders/day | Add Elasticsearch ($150-300/mo) | PostgreSQL search latency exceeds 500ms |
-| > 1,000 orders/day | Upgrade to larger DB instance ($100-200/mo) | Database CPU > 70% sustained |
-| > 2,000 orders/day | Extract Order Service as microservice | Module boundary violations, deployment bottlenecks |
-| > 5,000 orders/day | Add Kafka for event bus | In-process event bus becomes bottleneck |
-| Multi-country launch | Separate deployments per country | Data residency, independent scaling |
-| Add BNPL/Wallet | Dedicated fintech team + compliance | Regulatory complexity |
-
----
-
-## 6. Budget Risk Assessment
-
-| Risk | Probability | Impact | Mitigation |
-|------|------------|--------|-----------|
-| SMS costs exceed budget (OTP fraud) | Medium | $200-500/mo extra | reCAPTCHA on OTP requests; fallback to WhatsApp OTP |
-| Firebase RTDB costs spike (high tracking volume) | Low | $100-300/mo extra | Optimize listener connections; batch location updates |
-| Cloud costs higher than expected (traffic spike) | Medium | $200-500/mo extra | Set billing alerts; auto-scaling limits |
-| Payment gateway integration delays | Medium | 2-4 weeks delay | Cash-on-delivery as fallback; Stripe test mode for development |
-| Team member turnover | Medium | 4-8 weeks delay | Document architecture decisions; pair programming |
-
----
-
-## 7. ROI Framework
-
-### 7.1 Revenue Model (MVP)
-
-| Revenue Stream | Model | Estimated Monthly (100-300 orders/day) |
-|---------------|-------|---------------------------------------|
-| Delivery fee | $3-7 per order | $9,000-63,000 |
-| Service fee | 5-10% of order subtotal | $4,500-45,000 |
-| Vendor commission | 15-25% of order subtotal | $13,500-112,500 |
-| Voucher sponsorships | Per-campaign | $500-2,000 |
-| **Total Revenue** | | **$27,500-222,500** |
-
-> **Note**: Assumes average order value of $15-30. Revenue range depends heavily on market, AOV, and commission rates.
-
-### 7.2 Break-Even Analysis
-
-| Scenario | Monthly OpEx | Monthly Revenue (Low) | Months to Break Even |
-|----------|-------------|----------------------|---------------------|
-| Conservative (100 orders/day, $15 AOV, 15% commission) | $45,000 | $6,750 | 7-8 months after launch |
-| Moderate (200 orders/day, $22 AOV, 20% commission) | $50,000 | $26,400 | 2-3 months after launch |
-| Optimistic (300 orders/day, $30 AOV, 25% commission) | $55,000 | $67,500 | < 1 month after launch |
-
-The key driver of break-even timeline is **order volume** and **average order value**. Team costs dominate operating expenses, so achieving order volume quickly is critical.
+### T4.P2.8 — Team Scaling
+**Description:** Add DevOps engineer, dedicated QA, second backend dev, second Flutter dev, product designer. Team grows from 2.5 FTE to 6–8 FTE.
+**Phase:** Phase 2

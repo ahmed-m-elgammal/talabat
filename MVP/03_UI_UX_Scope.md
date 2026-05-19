@@ -1,451 +1,257 @@
 # 03 — UI/UX Scope
 
-## 1. Overview
+## Overview
 
-This plan defines the UI/UX implementation scope for the Talabat-like MVP, based on the production design specifications in `docs/13_ui_ux_specifications.md`. The MVP implements the MM3 design system with brand colors, typography, and component patterns adapted for a single-country, food-delivery-focused product.
+The MVP UI/UX follows Talabat's MM3 design system (see `docs/13_ui_ux_specifications.md`) with simplified scope. We implement the core ordering flow screens with the brand's visual language: orange primary (#FF5A00), clean card-based layouts, bottom sheet interactions, and RTL support for Arabic. The MVP focuses on task completion speed — users should be able to place an order with minimal taps.
 
-The design must support **English (LTR) and Arabic (RTL)** layouts, provide **offline-first visual feedback**, and deliver a **fast, task-completion-oriented experience** optimized for mobile devices.
-
----
-
-## 2. Design System Foundation (MVP)
-
-### 2.1 Brand Colors
-
-| Color | Hex | Usage |
-|-------|-----|-------|
-| Talabat Orange (Primary) | `#FF5A00` | Primary CTA buttons, active states, brand accent |
-| Talabat Dark | `#1A1A2E` | Primary text, navigation bars |
-| Talabat Gray | `#6B7280` | Secondary text, inactive states |
-| Talabat Light Gray | `#F3F4F6` | Background, dividers |
-| Success Green | `#10B981` | Delivered status, positive feedback |
-| Warning Amber | `#F59E0B` | Busy status, caution messages |
-| Error Red | `#EF4444` | Errors, cancellation, out of stock |
-
-### 2.2 Typography
-
-**English**: TTCommonsPro (400, 600, 700, 800)
-
-| Style | Weight | Size | Usage |
-|-------|--------|------|-------|
-| H1 | 800 | 28sp | Screen titles |
-| H2 | 700 | 22sp | Section headers |
-| H3 | 600 | 18sp | Subsection headers |
-| Body 1 | 400 | 16sp | Primary body text |
-| Body 2 | 400 | 14sp | Secondary body text |
-| Caption | 400 | 12sp | Labels, timestamps |
-| Button | 700 | 16sp | CTA buttons |
-
-**Arabic**: NotoSansArabic (400, 500, 700, 800) — Same scale with adjusted line heights (1.4x font size).
-
-### 2.3 Spacing & Layout Tokens
-
-| Token | Value | Usage |
-|-------|-------|-------|
-| xs | 4dp | Inline padding, icon gaps |
-| sm | 8dp | Compact spacing |
-| md | 12dp | Standard element spacing |
-| lg | 16dp | Screen edge padding |
-| xl | 24dp | Section spacing |
-| 2xl | 32dp | Screen-level spacing |
-
-### 2.4 Corner Radius
-
-| Token | Value | Usage |
-|-------|-------|-------|
-| sm | 4dp | Tags, badges |
-| md | 8dp | Buttons, input fields |
-| lg | 12dp | Cards, bottom sheets |
-| xl | 16dp | Modals |
-| full | 50% | Avatar, circular buttons |
+This document specifies which screens, components, and interactions are included in MVP vs. deferred to Phase 2.
 
 ---
 
-## 3. Core UI Components (MVP)
+## MVP Screens
 
-### 3.1 Buttons
+### T3.1 — Onboarding Screen
 
-| Component | Visual Spec | Usage |
-|-----------|-------------|-------|
-| Primary CTA | Orange bg (#FF5A00), white text, md radius (8dp), min height 48dp | "Place Order", "Add to Cart" |
-| Secondary CTA | White bg, orange border, orange text, md radius | "View Menu", "Change" |
-| Tertiary | Text only, orange | "Skip", "Learn More" |
-| Icon Button | Circular (48dp), icon only | Share, Favorite, Filter |
-| Floating CTA | Fixed bottom, full width, shadow elevation | "View Basket (2) - AED 85" |
+**Description:** A lightweight onboarding with 2–3 swipeable pages introducing the app's value proposition, followed by a "Get Started" CTA and "Already have an account? Log in" link. Skip button allows bypassing onboarding entirely.
 
-### 3.2 Cards
+**Dependencies:** T2.9 (design system), T2.11 (localization).
 
-| Component | Content |
-|-----------|---------|
-| Vendor Card | Logo (80x80), name, cuisine, rating, delivery time, delivery fee, offer badge, Pro badge |
-| Order Card (Home) | Status icon, vendor name, ETA, Track/Help buttons |
-| Menu Item Row | Name, description (2-line max), price, Add button / quantity stepper |
-| Order History Card | Vendor name, items summary, total, date, status badge, Reorder button |
+**Acceptance Criteria:**
+- [ ] 2–3 swipeable pages with illustration, headline, and description text
+- [ ] Page indicator dots showing current position
+- [ ] "Get Started" primary CTA button
+- [ ] "Already have an account? Log in" text link
+- [ ] Skip button in top-right corner (can be hidden via feature flag)
+- [ ] Onboarding completion state saved locally (SharedPreferences)
+- [ ] RTL layout for Arabic: swipe direction reversed, text aligned right
 
-### 3.3 Bottom Sheets
-
-| Sheet | Trigger | Content |
-|-------|---------|---------|
-| Address selection | Tap delivery address | Saved addresses + map picker |
-| Item detail | Tap menu item | Image, description, options, quantity, Add to Cart |
-| Sort & Filter | Tap filter bar | Sort options, cuisine filters, delivery filters |
-| Voucher input | Tap voucher field in cart | Voucher code entry + apply |
-| Cancellation | Cancel order | Reason selection + confirm |
-
-### 3.4 Input Fields
-
-| Type | Spec |
-|------|------|
-| Phone number | Country flag + dial code + number, E.164 validation |
-| OTP | 6 individual digit boxes, auto-fill, cursor animation |
-| Search | Search icon, clear button, placeholder per vertical |
-| Card number | Brand icon, formatted groups, Luhn check |
-| Address | Search with map, area validation |
+**Phase:** MVP
 
 ---
 
-## 4. Screen Specifications (MVP)
+### T3.2 — Login Screen
 
-### 4.1 Screen Inventory
+**Description:** Phone number input with OTP verification. Minimal friction: enter phone, receive OTP, auto-verify, done. Guest mode "Skip" option available.
 
-| # | Screen | Route | Priority | Key Elements |
-|---|--------|-------|----------|-------------|
-| S1 | Splash / Onboarding | `/` | P0 | App logo, language selector, get started |
-| S2 | Login | `/auth/login` | P0 | Phone input, social login, skip |
-| S3 | OTP Verification | `/auth/otp` | P0 | 6-digit input, resend timer, verify |
-| S4 | Registration | `/auth/signup` | P0 | Name, email, phone, password, consent |
-| S5 | Home | `/` | P0 | Location, search, vertical tabs, vendor list, active order |
-| S6 | Search | `/search` | P0 | Search bar, autocomplete, results, filters |
-| S7 | Vendor Detail | `/vendor/{id}` | P0 | Cover, info, menu categories, items, cart FAB |
-| S8 | Cart | `/cart` | P0 | Items, quantity, voucher, total, checkout CTA |
-| S9 | Checkout | `/checkout` | P0 | Address, time, payment, summary, place order |
-| S10 | Add Card | `/payment/add-card` | P0 | Card number, expiry, CVV, 3DS WebView |
-| S11 | Order History | `/orders` | P0 | Order list, reorder |
-| S12 | Order Detail | `/orders/{id}` | P0 | Status timeline, items, pricing, rider info |
-| S13 | Order Tracking | `/orders/{id}/tracking` | P0 | Live map, rider position, ETA, actions |
-| S14 | Profile | `/profile` | P0 | User info, addresses, payment, settings |
-| S15 | Address Manager | `/profile/addresses` | P0 | Saved addresses, add/edit/delete |
-| S16 | Rider Chat | `/orders/{id}/chat` | P1 | Message list, input, quick messages |
-| S17 | Favorites | `/favorites` | P1 | Favorited vendors list |
+**Dependencies:** T2.1 (auth module), T2.9 (design system).
+
+**Acceptance Criteria:**
+- [ ] Phone number input with country flag + dial code selector (single country for MVP)
+- [ ] "Continue" button sends OTP
+- [ ] OTP screen with 6 individual digit boxes, auto-fill via SMS
+- [ ] Resend OTP link with countdown timer (60 seconds)
+- [ ] Error states: invalid phone format, too many OTP requests, wrong OTP
+- [ ] Guest mode "Skip" link at bottom
+- [ ] Social login buttons (Google, Apple) for future use — grayed out with "Coming soon" for MVP
+
+**Phase:** MVP
 
 ---
 
-## 5. Tasks
+### T3.3 — Home Screen
 
-### 5.1 Design System Tasks
+**Description:** The primary screen users see after login. Contains delivery address selector, search bar, food vertical tab, and vendor listing. Active order card appears at top when applicable.
 
----
+**Dependencies:** T2.2 (home module), T2.9 (design system).
 
-#### Task UX-DS-01: Design System Package — Foundation
-**Description**: Create the `design_system` Flutter package with color constants, typography definitions, spacing tokens, and corner radius tokens. Implement `TalabatTheme` class with `lightTheme` and `darkTheme` configurations.
-**Dependencies**: None
-**Acceptance Criteria**:
-- All brand colors defined as `Color` constants
-- Typography scale implemented with `TextStyle` for each style
-- Spacing and radius tokens as `double` constants
-- `TalabatTheme.lightTheme` returns `ThemeData` with all specifications
-- `TalabatTheme.darkTheme` returns `ThemeData` for dark mode
-- Arabic font (NotoSansArabic) loaded and configured for RTL text
-- Theme switches at runtime without app restart
+**Acceptance Criteria:**
+- [ ] Top bar: delivery address with dropdown arrow, tapping opens address selector
+- [ ] Search bar below address: placeholder "Search for food or groceries" (tapping navigates to search screen)
+- [ ] Vertical tabs row: "Food" active, "Grocery"/"Pharmacy"/"DineOut" tabs with "Coming soon" label
+- [ ] Active order card (if applicable): vendor name, status badge (colored dot + text), ETA, Track and Help buttons
+- [ ] Vendor listing: scrollable list of vendor cards
+- [ ] Vendor card: logo (80x80), name, cuisine types, rating (★ avg + count), delivery time range, delivery fee, "Free delivery with Pro" label (Phase 2; for MVP, show delivery fee)
+- [ ] Offer badge on vendor card if applicable (e.g., "20% off · Min AED 50")
+- [ ] Bottom navigation bar: Home, Search, Orders, Profile (icons + labels)
+- [ ] Skeleton/shimmer loading state for vendor cards
+- [ ] Pull-to-refresh gesture reloads data
+- [ ] Offline banner: "Looks like you're offline, but here are some picks which you can still explore"
 
----
-
-#### Task UX-DS-02: Button Components
-**Description**: Implement all button variants: PrimaryCta, SecondaryCta, TertiaryButton, IconButton, FloatingCta. Support loading state, disabled state, and accessibility labels.
-**Dependencies**: UX-DS-01
-**Acceptance Criteria**:
-- Primary CTA: orange bg, white text, 8dp radius, 48dp min height
-- Loading state: spinner replaces text
-- Disabled state: gray bg, no tap response
-- Floating CTA: fixed position, shadow, full width
-- All buttons meet 48x48dp minimum touch target
-- Accessibility: semantic label announced by screen reader
-- RTL: icon positions flip in Arabic
+**Phase:** MVP
 
 ---
 
-#### Task UX-DS-03: Card Components
-**Description**: Implement VendorCard, OrderCard, MenuItemRow, and OrderHistoryCard components. Support loading skeleton state and error state.
-**Dependencies**: UX-DS-01
-**Acceptance Criteria**:
-- VendorCard: logo, name, cuisine, rating, delivery time, fee, offer badge
-- Skeleton state: shimmer placeholder matching card layout
-- OrderCard: status icon with color, vendor, ETA, action buttons
-- MenuItemRow: name (1 line), description (2 lines max), price, Add/stepper
-- OrderHistoryCard: vendor, items count, total, status badge, date, reorder
-- All cards: 12dp corner radius, lg internal padding
-- Tap targets meet 48dp minimum
+### T3.4 — Vendor Menu Screen
+
+**Description:** Full vendor detail with menu browsing. Header with cover image and vendor info, scrollable menu with category tabs, item list, and sticky cart button.
+
+**Dependencies:** T2.3 (vendor/menu module), T2.9 (design system).
+
+**Acceptance Criteria:**
+- [ ] Collapsible header: cover image (200dp height), vendor name, cuisine, rating, delivery time, delivery fee
+- [ ] Offer badges: e.g., "20% off (Min AED 50)" below vendor info
+- [ ] Search menu bar: inline search filtering items by name
+- [ ] Category tabs: horizontal scrollable, tap scrolls to category section
+- [ ] Menu item row: name, description (truncated), price, "Add" button; tap opens item detail
+- [ ] Item detail bottom sheet: full image, name, description, options with choices, quantity stepper, special instructions, "Add to Cart" button with total price
+- [ ] Unavailable items shown greyed with "Unavailable" label (no Add button)
+- [ ] Sticky bottom bar: "View Basket (2) · AED 85.00 →" with tap navigating to cart
+- [ ] Add-to-cart animation: item count badge bounces on cart icon (optional, can be simple for MVP)
+
+**Phase:** MVP
 
 ---
 
-#### Task UX-DS-04: Bottom Sheet Component
-**Description**: Implement reusable bottom sheet component with drag handle, scrollable content area, and dismiss behavior. Support multiple content types.
-**Dependencies**: UX-DS-01
-**Acceptance Criteria**:
-- Drag handle at top (centered, 40dp wide, 4dp height)
-- Sheet animates up from bottom (250ms ease-out)
-- Scrollable content area
-- Dismiss: swipe down or tap outside
-- Sheet covers 60-90% of screen height based on content
-- No gap between sheet and keyboard when input focused
+### T3.5 — Cart Screen
+
+**Description:** Shows current cart contents with item management, voucher input, and price breakdown. Checkout CTA at bottom.
+
+**Dependencies:** T2.4 (cart module), T2.9 (design system).
+
+**Acceptance Criteria:**
+- [ ] Vendor name at top of cart
+- [ ] Cart item list: item name, selected options, quantity stepper, unit price, total price
+- [ ] Swipe left to delete item (with undo snackbar)
+- [ ] Voucher section: "Add voucher" expandable input with Apply button
+- [ ] Price breakdown: Subtotal, Delivery Fee, Service Fee, Discount (if voucher applied), Total
+- [ ] "Clear cart" option in top-right menu
+- [ ] Empty cart state: illustration, "No items in cart", "Start ordering" CTA
+- [ ] Checkout CTA: "Proceed to Checkout · AED {total}" at bottom
+- [ ] Cross-vendor dialog: if user navigates to different vendor's menu, bottom sheet asks "Clear cart and start new order?"
+
+**Phase:** MVP
 
 ---
 
-#### Task UX-DS-05: Input Field Components
-**Description**: Implement typed input fields: PhoneInput, OtpInput, SearchInput, CardInput, AddressInput. All with validation, error messages, and accessibility.
-**Dependencies**: UX-DS-01
-**Acceptance Criteria**:
-- PhoneInput: country flag + dial code + number, E.164 formatting
-- OtpInput: 6 boxes, auto-focus next on entry, auto-submit on complete
-- SearchInput: search icon, clear button, placeholder text
-- CardInput: brand icon detection, grouped formatting, Luhn check
-- Error state: red border + helper text below
-- All inputs: 48dp min height, 8dp corner radius, lg horizontal padding
-- RTL: text alignment flips for Arabic
+### T3.6 — Checkout Screen
+
+**Description:** Three-step checkout: address confirmation, payment method, and order placement. Streamlined for speed.
+
+**Dependencies:** T2.5 (checkout module), T2.9 (design system).
+
+**Acceptance Criteria:**
+- [ ] Step indicator (3 dots or segments) at top
+- [ ] Step 1 - Address: selected address card with "Change" link, address list if multiple
+- [ ] Step 2 - Payment: saved cards list (radio selection), "Add new card" option, "Cash on delivery" option
+- [ ] Step 3 - Confirm: order summary (items, pricing, address, payment method), "Place Order · AED {total}" CTA
+- [ ] Payment processing: spinner overlay with "Processing payment..."
+- [ ] Order success screen: checkmark animation, order number, "Track your order" primary CTA, "Back to home" secondary CTA
+- [ ] Error handling: payment failed → red error card with retry/change payment options
+- [ ] Add new card: card number input with brand detection, expiry, CVV, cardholder name (via Stripe/Checkout.com SDK)
+
+**Phase:** MVP
 
 ---
 
-### 5.2 Screen Implementation Tasks
+### T3.7 — Order Tracking Screen
+
+**Description:** Live order tracking with map, status timeline, and rider actions.
+
+**Dependencies:** T2.6 (order tracking module), T2.9 (design system).
+
+**Acceptance Criteria:**
+- [ ] Map view: vendor pin, rider marker (motorcycle icon), delivery address pin
+- [ ] Rider marker moves in real-time (Firebase RTDB listener)
+- [ ] Status timeline: horizontal stepper with Ordered → Preparing → On the way → Delivered
+- [ ] Current status highlighted with orange; completed steps with green checkmark
+- [ ] Rider info card below map: name, vehicle type, rating, ETA
+- [ ] Action buttons: Call (phone icon), Chat (message icon)
+- [ ] Order details expandable section: vendor, items, pricing
+- [ ] "Delivered" confirmation state with celebration animation
+- [ ] Map supports zoom and pan gestures
+
+**Phase:** MVP
 
 ---
 
-#### Task UX-SCR-01: Splash & Onboarding
-**Description**: Implement splash screen with app logo animation (1.5s), followed by onboarding carousel (3 slides) with swipeable illustrations and "Get Started" CTA.
-**Dependencies**: UX-DS-02
-**Acceptance Criteria**:
-- Splash: logo animation, auto-advance after 1.5s
-- Onboarding: 3 swipeable cards with illustrations and text
-- Page indicators (dots) at bottom
-- "Get Started" primary CTA
-- "Already have an account? Log in" link
-- "Skip" button (top right)
-- Remembers if onboarding completed (don't show again)
+### T3.8 — Order History Screen
+
+**Description:** List of past and active orders with reorder functionality.
+
+**Dependencies:** T2.7 (order history module), T2.9 (design system).
+
+**Acceptance Criteria:**
+- [ ] Filter tabs at top: All, Active, Completed, Cancelled
+- [ ] Order card: vendor name + logo, item count, total, status badge, date/time
+- [ ] Active orders show "Track" button
+- [ ] Tap card → order detail screen with full breakdown
+- [ ] "Reorder" button on completed orders: adds available items to cart
+- [ ] Infinite scroll with loading indicator at bottom
+- [ ] Empty state per filter tab
+
+**Phase:** MVP
 
 ---
 
-#### Task UX-SCR-02: Login Screen
-**Description**: Implement login screen with phone number input, social login buttons (Google, Apple), and guest mode option.
-**Dependencies**: UX-DS-05, F-AUTH-01
-**Acceptance Criteria**:
-- App logo at top
-- Phone number input with country flag/dial code
-- "Continue" primary CTA
-- Divider: "or"
-- Social login buttons: Google, Apple (with correct branding)
-- "Skip" text button for guest mode
-- All text available in English + Arabic
-- Keyboard auto-opens on phone input focus
+### T3.9 — Profile & Settings Screens
+
+**Description:** User profile management, address book, payment methods, and settings.
+
+**Dependencies:** T2.8 (profile module), T2.9 (design system).
+
+**Acceptance Criteria:**
+- [ ] Profile screen: avatar placeholder, name, email, phone, edit button
+- [ ] Edit profile: first name, last name, email, DOB (date picker), gender, save/cancel
+- [ ] Address book: list of addresses with edit/delete, add new address (map pin + form fields)
+- [ ] Payment methods: list of saved cards (last 4, brand, expiry), add new card, delete with confirmation
+- [ ] Settings: language toggle (English/Arabic), push notifications toggle, about, terms, privacy policy
+- [ ] Logout button with confirmation dialog
+- [ ] "Delete account" option with warning dialog (per app store requirements)
+
+**Phase:** MVP
 
 ---
 
-#### Task UX-SCR-03: OTP Verification Screen
-**Description**: Implement OTP screen with 6-digit boxes, resend timer, and verification logic.
-**Dependencies**: UX-DS-05, F-AUTH-01
-**Acceptance Criteria**:
-- Title: "Verify your number"
-- Subtitle: "We sent a code to +971 ****567"
-- 6 digit boxes with auto-advance focus
-- Auto-fill via SMS (sms_autofill plugin)
-- Resend button with 60-second countdown
-- Error: "Invalid code" with retry
-- Success: auto-navigate to home
-- Accessibility: each box announced as "digit X of 6"
+## MVP Components
+
+### T3.10 — Core Component Library
+
+**Description:** Build the essential reusable UI components needed by all screens. These form the foundation of the design system package.
+
+**Dependencies:** None (foundational).
+
+**Acceptance Criteria:**
+- [ ] **Buttons**: Primary (orange bg, white text), Secondary (white bg, orange border), Tertiary (text only), Icon Button (circular)
+- [ ] **Cards**: Vendor Card, Cart Item Card, Order Card, Address Card
+- [ ] **Input Fields**: Phone Number (country flag + dial code), OTP (6 boxes), Text Input (with label, error, helper), Search Bar
+- [ ] **Bottom Sheets**: Standard bottom sheet with drag handle, Item Detail sheet, Address Selector sheet, Confirmation sheet
+- [ ] **Navigation**: Bottom Navigation Bar (4 tabs: Home, Search, Orders, Profile), Top App Bar (with back button, title, actions)
+- [ ] **Status**: Badges (colored dots + text for order status), Tags (offer badges, "Coming soon"), Rating (star + number + count)
+- [ ] **Feedback**: Loading spinner, Shimmer skeleton, Error card, Empty state (illustration + text + CTA), Toast/Snackbar
+- [ ] **Stepper**: Quantity stepper (+/-), Checkout step indicator
+
+**Phase:** MVP
 
 ---
 
-#### Task UX-SCR-04: Home Screen
-**Description**: Implement the full home screen layout as specified in `docs/13_ui_ux_specifications.md` Section 4.2.
-**Dependencies**: UX-DS-03, F-HOME-01
-**Acceptance Criteria**:
-- Location bar: "Delivering to {area}" with chevron
-- Search bar with placeholder
-- Vertical tab: Food
-- Active order card (conditional: only if active order exists)
-- Offers horizontal carousel
-- "Popular near you" vendor list
-- Bottom navigation: Home (active), Search, Orders, Profile
-- Pull-to-refresh with custom indicator
-- Shimmer skeleton for loading state
-- Offline banner: "You're offline" with retry
+## Phase 2 UI/UX Items (Not for MVP)
 
----
+### T3.P2.1 — DineOut Screens
+**Description:** Reservation booking flow, restaurant detail with amenities, booking management, bill payment.
+**Phase:** Phase 2
 
-#### Task UX-SCR-05: Search Screen
-**Description**: Implement search screen with autocomplete, results, and filtering as specified in `docs/16_search_discovery_system.md`.
-**Dependencies**: UX-DS-05, F-SEARCH-01
-**Acceptance Criteria**:
-- Auto-focus search bar on entry
-- Autocomplete dropdown with recent searches and suggestions
-- Tab bar: All, Food
-- Vendor results section with cards
-- Dish/item results section
-- Sort & Filter bottom sheet
-- Active filter chips
-- Empty state: "No results for {query}" with suggestions
-- Cached results shown offline with toast
+### T3.P2.2 — Grocery/Q-Commerce Screens
+**Description:** Product listing with filters, shopping list, item replacement timer, freshness guarantee, verified picker tracking.
+**Phase:** Phase 2
 
----
+### T3.P2.3 — Wallet & BNPL Screens
+**Description:** Wallet dashboard, top-up flow, transaction history, BNPL dashboard, installment payment, Rewind feature.
+**Phase:** Phase 2
 
-#### Task UX-SCR-06: Vendor Detail & Menu
-**Description**: Implement vendor detail screen with menu as specified in `docs/13_ui_ux_specifications.md` Section 4.3.
-**Dependencies**: UX-DS-03, F-VENDOR-01
-**Acceptance Criteria**:
-- Cover image with gradient overlay, back button, favorite button
-- Vendor info: name, cuisine, rating, delivery time, fee
-- Offer badges row
-- Menu search bar (within vendor)
-- Category headers (sticky on scroll)
-- Menu item rows with Add button
-- Floating cart button: "View Basket ({n}) - {price}"
-- Item tap → item detail bottom sheet
-- Scroll to category from category chips at top
+### T3.P2.4 — Pro Subscription Screens
+**Description:** Plan selection, subscription management, family plan, cancellation survey.
+**Phase:** Phase 2
 
----
+### T3.P2.5 — Rewards Screens
+**Description:** Points balance, burn options, charity, raffle, voucher redemption.
+**Phase:** Phase 2
 
-#### Task UX-SCR-07: Cart & Checkout Screens
-**Description**: Implement cart screen and multi-step checkout flow.
-**Dependencies**: UX-DS-02, UX-DS-03, F-CART-01, F-CHECKOUT-01
-**Acceptance Criteria**:
-- Cart: item list with stepper, swipe-delete, voucher field, total, CTA
-- Cross-vendor dialog: "Clear cart?" bottom sheet
-- Checkout step 1: Address (pre-selected, change button)
-- Checkout step 2: Delivery time (ASAP)
-- Checkout step 3: Payment method selection
-- Order summary with item count and pricing
-- "Place Order - {total}" CTA
-- Loading overlay during order placement
-- Success → order tracking screen
-- Error → specific error message with retry
+### T3.P2.6 — AI Chat Interface
+**Description:** ChatGPT-powered conversational food discovery with disclaimer and "Powered by ChatGPT" footer.
+**Phase:** Phase 2
 
----
+### T3.P2.7 — Advanced Interactions
+**Description:** Micro-interactions (add-to-cart fly animation, item parallax), Lottie animations (order success, Pro activation), foldable device support.
+**Phase:** Phase 2
 
-#### Task UX-SCR-08: Order Tracking Screen
-**Description**: Implement order tracking screen with live map as specified in `docs/13_ui_ux_specifications.md` Section 4.4.
-**Dependencies**: F-ORDER-03, F-CORE-06
-**Acceptance Criteria**:
-- Full map view with: vendor marker, rider marker, delivery pin
-- Rider icon moves in real-time
-- Status bar: "On the way" with color indicator
-- Rider info: name, vehicle, rating
-- ETA: "12 minutes" (updates dynamically)
-- Action row: Call, Chat, Tip buttons
-- Expandable order details section below map
-- Map launches in full landscape on rotation
-- Rider chat accessible from action row (P1)
-- Offline: last known position with reconnect indicator
+### T3.P2.8 — Accessibility Enhancements
+**Description:** Full screen reader support with accessibility labels, high contrast mode, font scaling, dedicated accessibility icon system.
+**Phase:** Phase 2
 
----
+### T3.P2.9 — Full Notification Center
+**Description:** In-app notification list with Braze content cards, notification preferences per channel, smart suppression.
+**Phase:** Phase 2
 
-#### Task UX-SCR-09: Order History Screen
-**Description**: Implement order history list with reorder functionality.
-**Dependencies**: UX-DS-03, F-ORDER-01
-**Acceptance Criteria**:
-- Active orders section at top (if any)
-- Past orders: vendor name, items count, total, date, status
-- Reorder button on past orders
-- Pull-to-refresh
-- Empty state: "No orders yet" with "Start ordering" CTA
-- Pagination: load more on scroll to bottom
-
----
-
-#### Task UX-SCR-10: Profile & Settings
-**Description**: Implement profile screen with user info, addresses, payment methods, and settings.
-**Dependencies**: UX-DS-03, F-PROFILE-01
-**Acceptance Criteria**:
-- User avatar/name at top
-- Account info section: name, email, phone (tappable to edit)
-- Addresses section: list with add/edit/delete
-- Payment methods section: list with add/remove
-- Settings: language, dark mode, notifications
-- Logout button
-- About & legal links
-
----
-
-### 5.3 Accessibility Tasks
-
----
-
-#### Task UX-A11Y-01: Screen Reader Support
-**Description**: Add semantic labels to all interactive elements. Follow accessibility patterns from `docs/13_ui_ux_specifications.md` Section 6.
-**Dependencies**: All screen tasks
-**Acceptance Criteria**:
-- All buttons have meaningful accessibility labels
-- Cart add: "Add to cart" → "Adding to cart" → "Item successfully added to cart" / "Issue adding item to cart"
-- Checkout address: "Delivering to {area}" + "Change address" button
-- Suggested items: "Item {n} of {total}"
-- OTP: "Digit {n} of 6"
-- Order status: "Order status: {status}"
-- Rider location: "Rider is {distance} away, ETA {minutes} minutes"
-
----
-
-#### Task UX-A11Y-02: RTL Layout Support
-**Description**: Ensure all screens render correctly in RTL (Arabic) mode. This includes text direction, icon mirroring, layout flipping, and navigation patterns.
-**Dependencies**: All screen tasks
-**Acceptance Criteria**:
-- All text renders right-to-left in Arabic
-- Navigation back arrow points right in RTL
-- Icons that imply direction are mirrored (e.g., back, forward)
-- Padding/margin symmetric (using `EdgeInsetsDirectional`)
-- Swipe gestures respect text direction
-- Currency formatting: "AED 85" in LTR, "85 AED" in RTL
-- Mixed Arabic/English text renders correctly (bidirectional)
-
----
-
-#### Task UX-A11Y-03: Loading & Empty States
-**Description**: Implement shimmer loading skeletons for all data-driven screens and empty states for all list views. Follow `docs/13_ui_ux_specifications.md` Sections 9.1 and 9.2.
-**Dependencies**: All screen tasks
-**Acceptance Criteria**:
-- Home: shimmer on vendor cards, offer cards
-- Menu: shimmer on category headers and item rows
-- Search: shimmer on result cards
-- Order tracking: map placeholder + status skeleton
-- Empty states for: search (no results), order history (no orders), cart (empty)
-- Error states for: network error, server error, cached results
-
----
-
-## 6. Animation Specifications
-
-| Animation | Duration | Easing | Trigger |
-|-----------|----------|--------|---------|
-| Page transition | 300ms | Ease-out | Screen navigation |
-| Bottom sheet | 250ms | Ease-out | Sheet show/hide |
-| Button press | 100ms | Ease-in | CTA tap |
-| Shimmer loading | 1500ms | Linear loop | Data loading |
-| Cart badge bounce | 200ms | Spring | Item added to cart |
-| Pull-to-refresh | 300ms | Ease-out | Pull gesture |
-| Status change | 300ms | Ease-out | Order status update |
-
----
-
-## 7. Responsive Breakpoints (MVP)
-
-| Class | Width | Target |
-|-------|-------|--------|
-| Compact | < 360dp | Small phones |
-| Medium | 360-412dp | Standard phones |
-| Expanded | > 412dp | Large phones |
-
-MVP focuses on Compact and Medium. Expanded support is nice-to-have. No tablet/foldable layout for MVP.
-
----
-
-## 8. Dark Mode
-
-Dark mode follows the production app pattern:
-
-| Element | Light Mode | Dark Mode |
-|---------|-----------|-----------|
-| Background | `#FFFFFF` | `#121212` |
-| Surface | `#F3F4F6` | `#1E1E1E` |
-| Primary text | `#1A1A2E` | `#FFFFFF` |
-| Secondary text | `#6B7280` | `#9CA3AF` |
-| CTA | `#FF5A00` | `#FF5A00` (unchanged) |
-| Card | `#FFFFFF` | `#1E1E1E` |
-| Error | `#EF4444` | `#EF4444` (unchanged) |
-
-Dark mode is toggle-only in MVP (no automatic system-following for simplicity).
+### T3.P2.10 — Advanced Search UI
+**Description:** Autocomplete dropdown, multi-search shopping list, photo-to-list, filter bottom sheet, map view for vendors.
+**Phase:** Phase 2

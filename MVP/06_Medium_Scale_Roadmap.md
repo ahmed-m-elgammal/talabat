@@ -1,426 +1,296 @@
-# 06 — Medium-Scale Roadmap (Phase 2)
+# 06 — Medium-Scale Roadmap (Phase 2 Path)
 
-## 1. Overview
+## Overview
 
-This document outlines the path from MVP to medium-scale operations, where the platform handles **500-2,000 vendors, 5,000-50,000 daily orders, and 3-9 country deployments**. The roadmap is organized into progressive stages, each with clear triggers, technical requirements, and migration strategies.
-
-The core principle: **extract and scale incrementally**. Start with the modular monolith from the MVP, identify bottlenecks through real production traffic, and extract services only when the cost of not extracting exceeds the cost of extraction.
+This document maps the journey from MVP to medium-scale, targeting 500+ vendors, 10,000+ daily orders, and multiple verticals across 3+ countries. Each phase builds on the previous one, and the modular monolith design ensures that service boundaries are already defined in code, making extraction straightforward when scale demands it.
 
 ---
 
-## 2. Scaling Stages Overview
+## Phase Timeline
 
-| Stage | Triggers | Key Changes | Timeline |
-|-------|----------|-------------|----------|
-| Stage 1: MVP Growth | 500+ orders/day, 200+ vendors | Vertical scaling, Elasticsearch, basic observability | Months 5-8 |
-| Stage 2: Service Extraction | 2,000+ orders/day, deployment bottlenecks | Extract critical services (Order, Dispatch), add Kafka | Months 9-14 |
-| Stage 3: Multi-Country | 2+ country launches | Per-country deployments, federation layer | Months 15-20 |
-| Stage 4: Feature Expansion | Pro, Wallet, BNPL demand | New service modules, fintech integrations | Months 21-30 |
-| Stage 5: Full Microservices | 20,000+ orders/day, 5+ teams | Complete service extraction, Kubernetes, service mesh | Months 31+ |
-
----
-
-## 3. Stage 1: MVP Growth (500+ Orders/Day)
-
-### 3.1 Triggers
-
-- Daily orders exceed 500 consistently
-- PostgreSQL search latency exceeds 500ms at p95
-- Backend CPU utilization sustained above 60%
-- Team expands beyond 5 engineers
-
-### 3.2 Infrastructure Changes
-
-#### Task S1-INFRA-01: Add Elasticsearch for Search
-**Description**: Deploy Elasticsearch cluster (3 nodes) for vendor and item search. Migrate search queries from PostgreSQL full-text to Elasticsearch. Configure Arabic and English analyzers per `docs/16_search_discovery_system.md`.
-**Dependencies**: MVP Search Module
-**Acceptance Criteria**:
-- Elasticsearch cluster running with 3 data nodes
-- Vendor index created with mappings for: name, name_ar, cuisine_types, location (geo_point), menu_items (nested)
-- Arabic analyzer configured: diacritics removal, letter normalization, transliteration
-- Search latency reduced to < 200ms at p95
-- Data sync: PostgreSQL → Elasticsearch via change data capture (Debezium) or periodic batch
-- Fallback to PostgreSQL search if Elasticsearch unavailable
-
-#### Task S1-INFRA-02: Vertical Scaling of Database & Backend
-**Description**: Upgrade PostgreSQL to a larger instance class. Add read replica for reporting and listing queries. Scale backend to 3+ instances behind load balancer.
-**Dependencies**: None
-**Acceptance Criteria**:
-- PostgreSQL primary: upgrade to db.r5.large (2 vCPU, 16GB RAM)
-- 1 read replica added for vendor listing, menu reads, order history queries
-- Backend scaled to 3 instances (from 2) with auto-scaling policy
-- Connection pooling via PgBouncer (200 max connections per replica)
-- Database CPU utilization sustained below 50%
-
-#### Task S1-INFRA-03: Enhanced Monitoring & Alerting
-**Description**: Implement comprehensive monitoring: APM (New Relic or Datadog), infrastructure metrics (Prometheus + Grafana), error tracking (Sentry), and custom business metrics dashboard.
-**Dependencies**: None
-**Acceptance Criteria**:
-- APM: request latency, error rate, throughput per endpoint
-- Infrastructure: CPU, memory, disk, network per service
-- Database: query latency, connection pool, replication lag
-- Business metrics: orders/hour, average delivery time, rider utilization
-- Alerting: PagerDuty integration for critical alerts
-- SLA monitoring: 99.5% uptime dashboard
-
-### 3.3 Estimated Cost Increase
-
-| Component | MVP Cost | Stage 1 Cost | Increase |
-|-----------|---------|-------------|----------|
-| Backend compute | $200 | $400 | +$200 |
-| PostgreSQL | $150 | $400 | +$250 |
-| Elasticsearch | $0 | $200 | +$200 |
-| Monitoring | $0 | $100 | +$100 |
-| **Monthly Total** | **$400-640** | **$1,100-1,500** | **+$700-860** |
+| Phase | Timeline | Key Milestone |
+|-------|----------|---------------|
+| MVP | Week 1–12 | Food delivery in 1 country, 50–100 vendors |
+| Phase 2A | Month 4–6 | Scale to 500 vendors, add search, monitoring |
+| Phase 2B | Month 7–9 | Add grocery vertical, multi-payment, subscriptions |
+| Phase 2C | Month 10–12 | Multi-country, extract microservices, advanced real-time |
 
 ---
 
-## 4. Stage 2: Service Extraction (2,000+ Orders/Day)
+## Phase 2A: Scale & Observability (Month 4–6)
 
-### 4.1 Triggers
+### T6.1 — Elasticsearch Search Integration
 
-- Deployment of one module requires full system restart
-- Order module needs independent scaling (10x traffic during peaks)
-- Dispatch module requires specialized compute (real-time scoring)
-- Team grows to 3+ sub-teams needing independent deployment cadence
+**Description:** Replace PostgreSQL full-text search with Elasticsearch for Arabic/English tokenization, autocomplete, personalized ranking, and geo-aware search. This is the highest-priority Phase 2 item because search quality directly impacts order conversion.
 
-### 4.2 Service Extraction Strategy
+**Dependencies:** MVP complete with vendor data flowing.
 
-The extraction follows the **Strangler Fig Pattern**: extract one service at a time, starting with the most bottlenecked module, while maintaining the monolith as the coordination layer.
+**Acceptance Criteria:**
+- [ ] Elasticsearch cluster deployed (3-node, managed)
+- [ ] `vendor_index` per country with Arabic and English analyzers
+- [ ] Diacritics stripping and Arabic letter normalization (أ→ا, ة→ه)
+- [ ] Autocomplete endpoint: GET /search/autocomplete?q={prefix}
+- [ ] Search endpoint with multi-field matching, geo filtering, and personalization boost
+- [ ] Index sync: vendor/menu updates in PostgreSQL → Elasticsearch via change data capture
+- [ ] Search latency target: < 200ms (p95)
+
+**Phase:** Phase 2A
+
+---
+
+### T6.2 — Monitoring & Observability
+
+**Description:** Add application performance monitoring, error tracking, and infrastructure metrics. Essential before scaling further.
+
+**Dependencies:** MVP deployed in production.
+
+**Acceptance Criteria:**
+- [ ] Sentry for error tracking in Flutter app and backend
+- [ ] Structured logging (JSON) with correlation IDs across all backend modules
+- [ ] Prometheus + Grafana for infrastructure metrics (CPU, memory, request latency, error rate)
+- [ ] Health check dashboards for all services
+- [ ] Alerting: p99 latency > 2s, error rate > 1%, database connections > 80%
+
+**Phase:** Phase 2A
+
+---
+
+### T6.3 — Kubernetes Migration
+
+**Description:** Move from single VM to Kubernetes (EKS or GKE) with auto-scaling, rolling deployments, and health checks. This enables horizontal scaling for order peaks.
+
+**Dependencies:** MVP running on VM with Docker.
+
+**Acceptance Criteria:**
+- [ ] Backend deployed as Docker container on K8s
+- [ ] Horizontal Pod Autoscaler: CPU > 70% → scale up (3–10 replicas)
+- [ ] Rolling deployments with zero downtime
+- [ ] Liveness and readiness probes configured
+- [ ] PostgreSQL and Redis remain managed services (not in K8s for reliability)
+- [ ] Staging environment on K8s mirrors production
+
+**Phase:** Phase 2A
+
+---
+
+### T6.4 — Feature Flag Service
+
+**Description:** Build a lightweight feature flag service supporting boolean flags, percentage rollouts, and country-level targeting. Replaces environment variables with a dynamic system.
+
+**Dependencies:** MVP running.
+
+**Acceptance Criteria:**
+- [ ] Feature flags stored in PostgreSQL with Redis cache (5-min TTL)
+- [ ] Admin UI to create/toggle flags
+- [ ] Client SDK: evaluate flag value given user context (country, user segment, device)
+- [ ] Kill switch support: instantly disable features in production
+- [ ] A/B experiment support: percentage bucket assignment
+
+**Phase:** Phase 2A
+
+---
+
+## Phase 2B: Verticals & Payments (Month 7–9)
+
+### T6.5 — Grocery Vertical (Q-Commerce)
+
+**Description:** Add grocery delivery with finite stock inventory, dark store model, and item replacement flow. This is the most complex Phase 2 feature because it introduces a fundamentally different inventory model.
+
+**Dependencies:** T6.1 (search for grocery product search), Inventory Service (T1.P2.1).
+
+**Acceptance Criteria:**
+- [ ] Inventory Service with finite stock: stock_count, low_stock_threshold, out_of_stock_behavior
+- [ ] Stock reservation on cart add (10-min TTL), deduction on order confirm
+- [ ] Item replacement timer: 5-minute countdown when item out of stock during picking
+- [ ] Grocery-specific search: product names, brand names, category browsing
+- [ ] Category-based product listing with filters (price, brand, dietary)
+- [ ] Age-restricted item confirmation dialog
+- [ ] "Few left" badge for low-stock items
+
+**Phase:** Phase 2B
+
+---
+
+### T6.6 — Multi-Payment Integration
+
+**Description:** Add Apple Pay, Google Pay, and talabat Pay wallet. Add a second payment gateway (HyperPay) for regional methods (STC Pay, BenefitPay, etc.).
+
+**Dependencies:** MVP payment service with single gateway.
+
+**Acceptance Criteria:**
+- [ ] Apple Pay integration via native PassKit framework
+- [ ] Google Pay integration via Google Pay API
+- [ ] Wallet service: balance, top-up, transactions, transfer
+- [ ] HyperPay integration for regional payment methods
+- [ ] Gateway routing: token affinity (use same gateway as original tokenization)
+- [ ] 3D Secure 2 support for both gateways
+
+**Phase:** Phase 2B
+
+---
+
+### T6.7 — Subscription Service (talabat Pro)
+
+**Description:** Add Pro subscription with free delivery on eligible vendors, exclusive offers, and family plans. Drives customer retention and order frequency.
+
+**Dependencies:** T6.6 (wallet for payment), T1.2 (vendor pro_eligible flag).
+
+**Acceptance Criteria:**
+- [ ] Plan management: Pro and Pro Lite tiers with monthly fees
+- [ ] Free delivery on pro_eligible vendors (delivery fee = $0 in pricing calculation)
+- [ ] Subscription signup with payment method selection
+- [ ] Auto-renewal with retry on payment failure
+- [ ] Family plan: add members by phone number (up to 4)
+- [ ] Cancellation flow with reason survey
+- [ ] Pro badge on vendor cards and in profile
+
+**Phase:** Phase 2B
+
+---
+
+### T6.8 — Notification Service (Braze Integration)
+
+**Description:** Add Braze for marketing automation, lifecycle campaigns, and in-app messages. Replaces simple FCM pushes with a sophisticated engagement platform.
+
+**Dependencies:** MVP FCM push running.
+
+**Acceptance Criteria:**
+- [ ] Braze SDK integrated in Flutter app
+- [ ] 12 notification channels matching full architecture spec
+- [ ] Transactional pushes via FCM (as before)
+- [ ] Marketing campaigns via Braze: segmentation, A/B testing, scheduling
+- [ ] In-app messages: full-screen modal, slide-up, custom HTML
+- [ ] Smart suppression: daily cap (5 marketing pushes/24h), sleep hours (11 PM–8 AM)
+- [ ] User attributes synced to Braze: first_name, country, pro_status, last_order_date
+
+**Phase:** Phase 2B
+
+---
+
+## Phase 2C: Multi-Country & Microservices (Month 10–12)
+
+### T6.9 — Multi-Country Deployment
+
+**Description:** Expand to 2–3 additional countries with data isolation, per-country database partitions, and geoDNS routing.
+
+**Dependencies:** T6.3 (Kubernetes for multi-cluster).
+
+**Acceptance Criteria:**
+- [ ] Country-level data isolation: separate PostgreSQL schemas or databases per country
+- [ ] Country code in all API requests (`X-Country-Code` header)
+- [ ] Per-country vendor pools, riders, and menus
+- [ ] Currency support: AED (UAE), SAR (Saudi), EGP (Egypt) — configurable per country
+- [ ] GeoDNS: route users to nearest country backend
+- [ ] Cross-country SSO: authenticate once, access any country
+
+**Phase:** Phase 2C
+
+---
+
+### T6.10 — Microservice Extraction
+
+**Description:** Extract the most performance-critical service modules from the monolith into independent microservices. Priority order: Order Service, Dispatch Service, Payment Service, then others.
+
+**Dependencies:** T6.3 (Kubernetes), T6.11 (Kafka event bus).
+
+**Acceptance Criteria:**
+- [ ] Order Service extracted: independent deployment, own database connection
+- [ ] Dispatch Service extracted: handles rider assignment independently
+- [ ] Payment Service extracted: isolated for PCI-DSS compliance boundary
+- [ ] Inter-service communication via Kafka events and REST/gRPC
+- [ ] Service mesh (Istio) for mTLS between services
+- [ ] Each service has own CI/CD pipeline
+
+**Phase:** Phase 2C
+
+---
+
+### T6.11 — Kafka Event Bus
+
+**Description:** Introduce Apache Kafka for asynchronous inter-service communication. Enables event-driven workflows, event replay, and decoupled services.
+
+**Dependencies:** T6.3 (Kubernetes for Kafka deployment).
+
+**Acceptance Criteria:**
+- [ ] Managed Kafka (MSK or Confluent) deployed
+- [ ] Event topics: order.created, order.status_changed, payment.captured, inventory.updated, rider.location_updated
+- [ ] Events follow CloudEvents specification for standardized metadata
+- [ ] Existing in-process events migrated to Kafka publishers/consumers
+- [ ] Consumer lag monitoring and auto-scaling
+- [ ] Event schema registry for backward compatibility
+
+**Phase:** Phase 2C
+
+---
+
+### T6.12 — Advanced Real-Time
+
+**Description:** Upgrade real-time architecture with WebSocket migration, SSE for menu availability, and ML-based ETA engine.
+
+**Dependencies:** T6.11 (Kafka for event streaming), T6.10 (extracted dispatch service).
+
+**Acceptance Criteria:**
+- [ ] WebSocket server for order tracking (replacing Firebase RTDB for high-volume paths)
+- [ ] SSE for real-time menu availability updates while browsing
+- [ ] ML-based ETA engine: combines historical data, traffic, weather, order complexity
+- [ ] Android Live Activity: foreground service for persistent tracking notification
+- [ ] iOS Live Activity: Dynamic Island and Lock Screen widgets
+- [ ] Advanced chat: image sharing, predefined messages, support agent handoff
+
+**Phase:** Phase 2C
+
+---
+
+### T6.13 — Rewards & BNPL
+
+**Description:** Add loyalty points system and Buy Now Pay Later (PostPaid) to increase customer retention and order value.
+
+**Dependencies:** T6.6 (wallet infrastructure), T6.7 (subscription for Pro integration).
+
+**Acceptance Criteria:**
+- [ ] Rewards: points earn on orders, burn options (free delivery, money off, charity, raffle)
+- [ ] Points expiration and balance tracking
+- [ ] BNPL: PostPaid with 30-day payment cycle
+- [ ] BNPL dashboard: available balance, upcoming payments, overdue alerts
+- [ ] Rewind: retroactively convert paid orders to BNPL
+- [ ] Multi-order BNPL payment: pay multiple installments at once
+- [ ] BNPL credit limit management
+
+**Phase:** Phase 2C
+
+---
+
+## Dependency Graph (Phase 2)
 
 ```
-Monolith (MVP)
-        │
-        ├── Extract Order Service ──→ First microservice
-        │   (most traffic, independent scaling need)
-        │
-        ├── Extract Dispatch Service ──→ Second microservice
-        │   (real-time requirements, specialized compute)
-        │
-        ├── Extract Payment Service ──→ Third microservice
-        │   (PCI compliance isolation, security boundary)
-        │
-        └── Remaining modules stay in monolith
-            (User, Vendor, Cart, Search, Notification, Voucher)
+Phase 2A (Month 4-6):
+  T6.1 Elasticsearch  ←── requires MVP vendor data
+  T6.2 Monitoring     ←── requires MVP in production
+  T6.3 Kubernetes     ←── requires MVP Docker-ized
+  T6.4 Feature Flags  ←── requires MVP running
+
+Phase 2B (Month 7-9):
+  T6.5 Grocery        ←── requires T6.1 (search) + T1.P2.1 (inventory)
+  T6.6 Multi-Payment  ←── requires MVP payment service
+  T6.7 Subscriptions  ←── requires T6.6 (wallet)
+  T6.8 Braze          ←── requires MVP FCM
+
+Phase 2C (Month 10-12):
+  T6.9 Multi-Country  ←── requires T6.3 (K8s)
+  T6.10 Microservices ←── requires T6.3 (K8s) + T6.11 (Kafka)
+  T6.11 Kafka         ←── requires T6.3 (K8s)
+  T6.12 Adv Real-Time ←── requires T6.10 + T6.11
+  T6.13 Rewards/BNPL  ←── requires T6.6 + T6.7
 ```
-
-### 4.3 Tasks
-
-#### Task S2-EXTRACT-01: Add Apache Kafka as Event Bus
-**Description**: Deploy Kafka cluster (3 brokers) to replace the in-process event bus. This is a prerequisite for service extraction, as inter-service communication requires durable, async messaging.
-**Dependencies**: None (can be done in parallel with Stage 1)
-**Acceptance Criteria**:
-- Kafka cluster running with 3 brokers
-- Topics created: `order.events`, `payment.events`, `dispatch.events`, `inventory.events`, `notification.events`
-- Events follow CloudEvents spec (matching `docs/09_backend_architecture.md` Section 4.3)
-- Producer/consumer clients configured in existing monolith
-- Consumer lag monitoring via Kafka Manager
-- At-least-once delivery guarantee
-
-#### Task S2-EXTRACT-02: Extract Order Service
-**Description**: Extract the Order module from the monolith into an independent service with its own database schema. Communication with other modules via Kafka events and REST/gRPC calls.
-**Dependencies**: S2-EXTRACT-01
-**Acceptance Criteria**:
-- Order Service runs as independent process with own database
-- Order-related tables migrated to separate schema
-- API Gateway routes `/orders/*` to Order Service
-- Events published to Kafka: `order.created`, `order.status_changed`, `order.cancelled`
-- Events consumed from Kafka: `payment.captured`, `rider.assigned`, `inventory.updated`
-- Zero-downtime migration: dual-write period → cutover → decommission old module
-- Order placement latency maintained at < 2s
-
-#### Task S2-EXTRACT-03: Extract Dispatch Service
-**Description**: Extract the Dispatch module into an independent service. This enables independent scaling for real-time rider assignment and location processing.
-**Dependencies**: S2-EXTRACT-01, S2-EXTRACT-02
-**Acceptance Criteria**:
-- Dispatch Service runs independently with own database (riders, delivery_assignments)
-- Consumes `order.created` events from Kafka
-- Publishes `rider.assigned`, `rider.location_updated` events
-- Rider location processing scales independently
-- Firebase RTDB integration maintained
-- Dispatch time target: < 3 minutes from order to rider assignment
-
-#### Task S2-EXTRACT-04: Extract Payment Service
-**Description**: Extract the Payment module for PCI compliance isolation and independent security audits. Payment data must be in a separate database with restricted access.
-**Dependencies**: S2-EXTRACT-01, S2-EXTRACT-02
-**Acceptance Criteria**:
-- Payment Service runs in isolated network segment
-- Payment tables in separate database with encrypted connections
-- Consumes `order.created` events for payment initiation
-- Publishes `payment.captured`, `payment.failed`, `payment.refunded` events
-- Stripe webhook handler isolated from main application
-- PCI-DSS compliance: no card data in other services
-- Payment success rate maintained at > 98%
-
-### 4.4 Infrastructure at Stage 2
-
-```
-┌─────────────────────────────────────────────────┐
-│                  API Gateway                      │
-└────────┬─────────┬──────────┬─────────┬─────────┘
-         │         │          │         │
-    ┌────▼───┐ ┌──▼────┐ ┌──▼─────┐ ┌─▼──────────┐
-    │ Order  │ │Payment│ │Dispatch│ │ Monolith    │
-    │Service │ │Service│ │Service │ │ (User,Vendor│
-    └───┬────┘ └───┬───┘ └───┬────┘ │ Cart,Search)│
-        │          │         │       └──────────────┘
-        └──────────┼─────────┘
-                   │
-            ┌──────▼──────┐
-            │    Kafka    │
-            │  (3 brokers)│
-            └─────────────┘
-```
-
-### 4.5 Estimated Cost at Stage 2
-
-| Component | Monthly Cost |
-|-----------|-------------|
-| Backend services (6 instances) | $600 |
-| PostgreSQL (primary + 2 replicas) | $600 |
-| Redis | $100 |
-| Elasticsearch (3 nodes) | $300 |
-| Kafka (3 brokers) | $300 |
-| Firebase RTDB | $200-500 |
-| Monitoring | $200 |
-| **Monthly Total** | **$2,300-2,600** |
 
 ---
 
-## 5. Stage 3: Multi-Country (2+ Countries)
+## Risk Mitigation
 
-### 5.1 Triggers
-
-- Business decision to launch in a second country
-- Data residency requirements (some countries mandate local data storage)
-- Currency and language differences require separate configurations
-
-### 5.2 Multi-Country Architecture
-
-Each country operates as an independent deployment with its own database, following the production architecture from `docs/04_database_architecture.md` Section 5.1:
-
-```
-Country: UAE (TB_AE)              Country: Egypt (HF_EG)
-┌──────────────────────┐          ┌──────────────────────┐
-│ API Gateway          │          │ API Gateway          │
-│ Order Service        │          │ Order Service        │
-│ Dispatch Service     │          │ Dispatch Service     │
-│ Monolith (remaining) │          │ Monolith (remaining) │
-│ PostgreSQL (UAE)     │          │ PostgreSQL (Egypt)   │
-│ Redis (UAE)          │          │ Redis (Egypt)        │
-│ Kafka (UAE)          │          │ Kafka (Egypt)        │
-└──────────────────────┘          └──────────────────────┘
-         │                                  │
-         └──────────┬───────────────────────┘
-                    │
-            ┌───────▼───────┐
-            │  Federation   │
-            │  Layer        │
-            │  (Auth SSO,   │
-            │  Analytics,   │
-            │  Config)      │
-            └───────────────┘
-```
-
-### 5.3 Tasks
-
-#### Task S3-MULTI-01: Federation Layer
-**Description**: Create a federation layer that provides: SSO authentication across countries, centralized analytics aggregation, global configuration management, and cross-country user account linking.
-**Dependencies**: S2-EXTRACT-02
-**Acceptance Criteria**:
-- User can log in with same account in different countries
-- SSO token valid across country-specific API endpoints
-- Country switching in app: clears cart, updates API endpoint, preserves auth
-- Analytics aggregated across countries in centralized dashboard
-- Configuration: feature flags can be set per country
-
-#### Task S3-MULTI-02: Per-Country Database Isolation
-**Description**: Set up independent database clusters per country. Migrate country-specific data to local clusters. Implement data residency compliance.
-**Dependencies**: None (infrastructure)
-**Acceptance Criteria**:
-- Each country has own PostgreSQL cluster in local region
-- Data residency: UAE data in UAE data center, Egypt data in Egypt data center
-- No cross-country database queries (country context in API headers)
-- GeoDNS routes API requests to country-specific backend
-
-#### Task S3-MULTI-03: Multi-Currency & Localization
-**Description**: Add support for multiple currencies (AED, EGP, SAR, etc.) and per-country localization (different Arabic dialects, country-specific payment methods).
-**Dependencies**: S3-MULTI-02
-**Acceptance Criteria**:
-- Currency formatting based on country context
-- Payment methods vary by country (Meeza in Egypt, STC Pay in Saudi, etc.)
-- Arabic dialect support: Gulf Arabic, Egyptian Arabic, Iraqi Arabic
-- Delivery fee calculations per-country
-- Voucher codes scoped to country
-
----
-
-## 6. Stage 4: Feature Expansion (Pro, Wallet, BNPL)
-
-### 6.1 Triggers
-
-- Revenue from delivery fees alone insufficient for growth
-- Customer demand for subscription benefits
-- Market demand for digital wallet and BNPL
-
-### 6.2 New Service Modules
-
-| Service | Description | Complexity | Timeline |
-|---------|-------------|-----------|----------|
-| Subscription Service | Pro membership: free delivery, exclusive offers, family plans | Medium | 8-10 weeks |
-| Wallet Service | talabat Pay: balance, top-up, transactions | High | 10-12 weeks |
-| BNPL Service | PostPaid: installments, auto-payment, Rewind | Very High | 12-16 weeks |
-| Rewards Service | Loyalty points: earn, spend, charity, raffle | Medium | 6-8 weeks |
-| DineOut Service | Restaurant reservations: BOGO, capacity booking | Medium | 8-10 weeks |
-
-### 6.3 Key Technical Challenges
-
-| Challenge | Solution |
-|-----------|---------|
-| Wallet regulatory compliance (KYC/AML) | Partner with licensed financial institution; implement tiered KYC |
-| BNPL credit risk assessment | Integrate credit scoring API; start with conservative limits |
-| Subscription billing (recurring payments) | Stripe Billing or custom subscription engine |
-| Wallet transaction consistency | Two-phase commit for wallet deductions; event sourcing for audit |
-| Multi-service payment routing | Payment Service becomes gateway routing to wallet/BNPL/card |
-
-### 6.4 Infrastructure Additions
-
-| Component | Purpose | Monthly Cost |
-|-----------|---------|-------------|
-| Wallet Service instances | 2 vCPU, 4GB x2 | $150 |
-| BNPL Service instances | 2 vCPU, 4GB x2 | $150 |
-| Subscription Service instances | 1 vCPU, 2GB x2 | $80 |
-| Additional Kafka partitions | Higher throughput | Included |
-| **Stage 4 Monthly Add** | | **$380** |
-
----
-
-## 7. Stage 5: Full Microservices (20,000+ Orders/Day)
-
-### 7.1 Architecture at Full Scale
-
-This matches the production architecture from `docs/09_backend_architecture.md`:
-
-```
-┌─────────────────────────────────────────────────┐
-│                  API Gateway (Kong)               │
-└────────┬──────┬──────┬───────┬──────┬───────────┘
-         │      │      │       │      │
-    ┌────▼┐ ┌──▼──┐ ┌─▼───┐ ┌▼────┐ ┌▼──────────┐
-    │User │ │Vendor│ │Order│ │Pay  │ │Dispatch   │
-    │Svc  │ │Svc  │ │Svc  │ │Svc  │ │Svc        │
-    └─────┘ └─────┘ └─────┘ └─────┘ └───────────┘
-    ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐
-    │Wallet│ │BNPL  │ │Search│ │Notif │ │Subsc │
-    │Svc   │ │Svc   │ │Svc   │ │Svc   │ │Svc   │
-    └──────┘ └──────┘ └──────┘ └──────┘ └──────┘
-    ┌──────┐ ┌──────┐ ┌──────┐
-    │Reward│ │DineOut│ │Chat/ │
-    │Svc   │ │Svc   │ │AI Svc│
-    └──────┘ └──────┘ └──────┘
-```
-
-### 7.2 Kubernetes Migration
-
-| Component | Technology | Configuration |
-|-----------|-----------|--------------|
-| Container Orchestration | Kubernetes (EKS/GKE) | Multi-cluster per country |
-| Service Mesh | Istio | mTLS, traffic management, observability |
-| CI/CD | GitHub Actions + ArgoCD | GitOps deployment model |
-| Secrets Management | HashiCorp Vault | Dynamic secrets rotation |
-| Container Registry | ECR / GCR | Per-country registries |
-
-### 7.3 Key Production Patterns
-
-| Pattern | Implementation | Benefit |
-|---------|---------------|---------|
-| Circuit Breaker | Istio + custom middleware | Prevent cascade failures |
-| Event Sourcing | Kafka + CQRS for Order/Payment | Audit trail, replay capability |
-| CQRS | Separate read/write models | Optimize read-heavy queries |
-| Saga Pattern | Orchestrated sagas for order flow | Distributed transaction management |
-| Feature Flags | Custom Config Service + Firebase Remote Config | Gradual rollout, A/B testing |
-| Blue/Green Deployment | ArgoCD + Kubernetes | Zero-downtime deployments |
-
-### 7.4 Estimated Cost at Full Scale (Single Country)
-
-| Component | Monthly Cost |
-|-----------|-------------|
-| Kubernetes cluster | $1,500-3,000 |
-| 15 services (2-5 replicas each) | $2,000-4,000 |
-| PostgreSQL (primary + 2 replicas) | $800-1,200 |
-| Redis cluster | $300-500 |
-| Elasticsearch (5 nodes) | $500-800 |
-| Kafka (5 brokers) | $500-800 |
-| Firebase RTDB | $500-2,000 |
-| CDN + Storage | $200-500 |
-| Monitoring stack | $500-1,000 |
-| **Monthly Total (1 country)** | **$6,800-13,800** |
-| **Per additional country** | **$5,000-10,000** |
-
----
-
-## 8. Migration Checklist: MVP → Medium-Scale
-
-### 8.1 Pre-Migration Validation
-
-- [ ] MVP handling 500+ orders/day with acceptable performance
-- [ ] Monitoring dashboards established with baseline metrics
-- [ ] On-call rotation established for production incidents
-- [ ] Database backup and recovery tested (RPO < 1 minute, RTO < 30 minutes)
-- [ ] Load testing completed: platform handles 5x normal traffic
-- [ ] Feature flags infrastructure in place for gradual rollouts
-
-### 8.2 Service Extraction Checklist (Per Service)
-
-- [ ] Identify all consumers of the module's API
-- [ ] Define Kafka event contracts (producer/consumer)
-- [ ] Set up new service infrastructure (compute, database, CI/CD)
-- [ ] Implement dual-write period: write to both monolith and new service
-- [ ] Validate data consistency between old and new
-- [ ] Cutover: API Gateway routes traffic to new service
-- [ ] Decommission old module from monolith
-- [ ] Remove dual-write code
-
-### 8.3 Multi-Country Launch Checklist
-
-- [ ] Federation layer deployed and tested
-- [ ] SSO authentication working across countries
-- [ ] Per-country database provisioned in local region
-- [ ] GeoDNS configured for country routing
-- [ ] Local payment methods integrated
-- [ ] Localization strings completed for target language/dialect
-- [ ] Vendor onboarding process ready for new market
-- [ ] Local operations team hired or contracted
-- [ ] Legal and regulatory compliance verified (data residency, payment licensing)
-
----
-
-## 9. Technology Evolution Map
-
-| Component | MVP | Stage 1 | Stage 2 | Stage 3-5 |
-|-----------|-----|---------|---------|-----------|
-| Architecture | Modular monolith | Modular monolith + ES | 3 microservices + monolith | Full microservices |
-| Database | PostgreSQL | PostgreSQL + ES | Per-service PostgreSQL | Per-service + read replicas |
-| Cache | Redis | Redis | Redis | Redis cluster |
-| Search | PostgreSQL FTS | Elasticsearch | Elasticsearch | Elasticsearch (5 nodes) |
-| Event bus | In-process | In-process + Kafka | Kafka | Kafka (5 brokers) |
-| Real-time | Firebase RTDB | Firebase RTDB | Firebase RTDB | Firebase RTDB → WebSocket |
-| Push | FCM | FCM | FCM + HMS | FCM + HMS |
-| Payments | Stripe + Cash | Stripe + Cash | + country-specific | + Wallet + BNPL |
-| Deployment | Docker Compose | Docker Compose | Kubernetes | Kubernetes + Istio |
-| CI/CD | GitHub Actions | GitHub Actions | GitHub Actions + ArgoCD | Full GitOps |
-| Monitoring | Basic (Sentry) | New Relic + Prometheus | Full observability | Full observability + custom |
-
----
-
-## 10. Key Decision Points
-
-| Decision | When to Decide | Options | Default |
-|----------|---------------|---------|---------|
-| Add Elasticsearch | Search latency > 500ms | PostgreSQL FTS upgrade vs. ES | ES (better long-term) |
-| Extract first service | Deployment bottleneck | Order vs. Dispatch vs. Payment | Order (highest traffic) |
-| Add Kafka | Need async inter-service comms | Kafka vs. RabbitMQ vs. Redis Streams | Kafka (production-proven at scale) |
-| Multi-country | Business mandate | Per-country cluster vs. multi-tenant | Per-country (data isolation) |
-| Migrate from Firebase RTDB | RTDB cost > $500/month | Custom WebSocket vs. Socket.io | WebSocket (lowest cost at scale) |
-| Add Kubernetes | > 5 services, > 3 teams | Kubernetes vs. ECS vs. Cloud Run | Kubernetes (portable, standard) |
-| Launch Wallet/BNPL | Regulatory approval + demand | Build vs. Partner | Partner (faster, compliant) |
+| Risk | Impact | Mitigation |
+|------|--------|-----------|
+| Premature microservice extraction | High operational complexity, slower development | Stay on monolith until K8s + Kafka are ready; extract one service at a time |
+| Elasticsearch cost overruns | Higher infrastructure bill | Start with single-node ES; scale only when query volume demands it |
+| Multi-country data compliance | Legal/regulatory issues | Consult local counsel before launching in each country; implement data residency from day 1 |
+| Braze cost scaling with MAU | Unexpected marketing costs | Monitor Braze usage closely; set campaign limits; evaluate open-source alternatives if costs spike |
+| Kafka operational complexity | Team skill gap, reliability issues | Use managed Kafka (MSK/Confluent); invest in team training before migration |

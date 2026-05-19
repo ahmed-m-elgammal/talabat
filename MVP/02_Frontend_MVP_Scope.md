@@ -1,586 +1,283 @@
 # 02 — Frontend MVP Scope
 
-## 1. Overview
+## Overview
 
-This plan defines the frontend implementation scope for the Talabat-like MVP. The mobile application is built with **Flutter** following a feature-first modular architecture with BLoC/Cubit state management, as described in `docs/12_frontend_architecture.md`. The MVP focuses on the customer-facing app with essential vendor portal and rider app screens.
+The MVP frontend is a **Flutter** mobile application targeting iOS and Android, following the same architecture described in `docs/12_frontend_architecture.md`: feature-first modular design with BLoC/Cubit state management, clean architecture (presentation → domain → data layers), and a shared design system package. The MVP focuses on the core ordering flow: browse → select → cart → checkout → track.
 
-The MVP app must support the complete order lifecycle with offline-first resilience, RTL (Arabic) layout support, and real-time order tracking. It targets both Android and iOS with a single codebase.
-
----
-
-## 2. Feature Module Breakdown
-
-### 2.1 MVP Feature Modules
-
-| Module | Screens | Key BLoCs | Priority |
-|--------|---------|-----------|----------|
-| **auth** | Login, OTP, Registration, Social Login | AuthBloc, OtpBloc | P0 |
-| **home** | Home Screen | HomeBloc, LocationBloc | P0 |
-| **search** | Search, Results, Autocomplete | SearchBloc | P0 |
-| **vendor** | Vendor Detail, Menu | VendorBloc, MenuBloc | P0 |
-| **cart** | Cart, Cross-vendor dialog | CartBloc | P0 |
-| **checkout** | Address Selection, Payment, Confirmation | CheckoutBloc, PaymentBloc | P0 |
-| **order** | Order History, Order Detail, Tracking | OrderBloc, TrackingBloc | P0 |
-| **payment** | Card Entry, Payment Methods | PaymentBloc | P0 |
-| **profile** | Profile, Addresses, Settings | ProfileBloc, AddressBloc | P0 |
-| **notifications** | Notification Center | NotificationBloc | P1 |
-| **favorites** | Favorites List | FavoritesBloc | P1 |
-| **chat** | Rider-Customer Chat | ChatBloc | P1 |
-
-### 2.2 Phase 2 Modules (Excluded from MVP)
-
-- wallet (talabat Pay)
-- bnpl (PostPaid)
-- subscription (Pro)
-- rewards (Loyalty points)
-- dineout (Reservations)
-- pharmacy (Prescriptions)
-- qcommerce (Full grocery with pickers)
-- ai_chat (ChatGPT integration)
+The full Talabat app supports 20+ feature modules, dual platform services (Google + HMS), 4 languages (English, Arabic, Arabic dialects, Kurdish), and 60+ native plugins. The MVP strips this to 8 core feature modules, Google Play Services only, English + Arabic, and ~15 essential plugins.
 
 ---
 
-## 3. Project Structure (MVP)
+## Feature Modules
 
-```
-talabat-mvp/
-├── lib/
-│   ├── main.dart
-│   ├── app.dart
-│   ├── core/
-│   │   ├── network/
-│   │   │   ├── api_client.dart          # Dio HTTP client with interceptors
-│   │   │   ├── auth_interceptor.dart    # JWT token injection + refresh
-│   │   │   └── error_handler.dart       # Unified error handling
-│   │   ├── storage/
-│   │   │   ├── local_storage.dart       # SharedPreferences abstraction
-│   │   │   └── secure_storage.dart      # Token storage (flutter_secure_storage)
-│   │   ├── analytics/
-│   │   │   └── analytics_service.dart   # Event tracking (simplified Perseus)
-│   │   ├── navigation/
-│   │   │   └── app_router.dart          # GoRouter configuration
-│   │   ├── theme/
-│   │   │   ├── app_theme.dart           # Light/dark themes
-│   │   │   ├── app_colors.dart          # Brand colors
-│   │   │   └── app_typography.dart      # Font definitions
-│   │   ├── utils/
-│   │   │   ├── validators.dart          # Phone, email, OTP validation
-│   │   │   ├── formatters.dart          # Currency, phone formatting
-│   │   │   └── extensions.dart          # Common extensions
-│   │   └── firebase/
-│   │       ├── firebase_service.dart    # RTDB initialization
-│   │       └── tracking_listener.dart   # Order tracking real-time
-│   ├── features/
-│   │   ├── auth/
-│   │   │   ├── presentation/
-│   │   │   │   ├── pages/              # Login, OTP, Registration
-│   │   │   │   ├── widgets/            # OTP input, social buttons
-│   │   │   │   └── bloc/
-│   │   │   ├── domain/
-│   │   │   │   ├── entities/
-│   │   │   │   ├── repositories/
-│   │   │   │   └── usecases/
-│   │   │   ├── data/
-│   │   │   │   ├── models/
-│   │   │   │   ├── repositories/
-│   │   │   │   └── datasources/
-│   │   │   └── di/
-│   │   ├── home/
-│   │   ├── search/
-│   │   ├── vendor/
-│   │   ├── cart/
-│   │   ├── checkout/
-│   │   ├── order/
-│   │   ├── payment/
-│   │   ├── profile/
-│   │   ├── notifications/
-│   │   ├── favorites/
-│   │   └── chat/
-│   └── di/
-│       └── injection.dart              # GetIt service locator
-├── packages/
-│   └── design_system/                  # Shared UI components
-├── assets/
-│   ├── i18n/
-│   │   ├── en.json
-│   │   └── ar.json
-│   ├── images/
-│   └── animations/
-└── test/
-    ├── unit/
-    ├── widget/
-    └── integration/
-```
+### T2.1 — Auth Feature Module
+
+**Description:** Implements the authentication flow: mobile OTP login, guest mode, and basic registration. Supports the progressive auth pattern where users can browse without logging in but must authenticate to place orders. Uses `sms_autofill` for OTP auto-fill on Android.
+
+**Dependencies:** Backend T1.1 (User Service), T1.6 (API Gateway).
+
+**Acceptance Criteria:**
+- [ ] Login screen with phone number input (E.164 format, country flag + dial code)
+- [ ] OTP verification screen with 6-digit boxes and auto-fill via SMS
+- [ ] Guest mode: skip button on login screen, browse freely without auth
+- [ ] Auth guard: redirect to login when user tries to place order without auth
+- [ ] JWT token storage in FlutterSharedPreferences with secure storage for refresh token
+- [ ] Auto token refresh on 401 responses
+- [ ] Basic registration: first name, last name, email (optional), DOB
+- [ ] Logout clears tokens and navigates to home
+
+**Phase:** MVP
 
 ---
 
-## 4. Tasks
+### T2.2 — Home Feature Module
 
-### 4.1 Core Infrastructure Tasks
+**Description:** The main landing screen showing delivery address selector, vertical tabs (food only for MVP), vendor listing with cards, and an active order card if applicable. Implements pull-to-refresh and skeleton loading states.
 
----
+**Dependencies:** T2.1 (auth for address management), Backend T1.2 (vendor listing).
 
-#### Task F-CORE-01: Project Scaffolding & DI Setup
-**Description**: Initialize Flutter project with the feature-first modular structure. Configure GetIt for dependency injection, set up feature module folder structure, configure analysis_options.yaml with strict linting.
-**Dependencies**: None
-**Acceptance Criteria**:
-- Flutter project created with directory structure matching spec
-- GetIt service locator configured with all core services registered
-- Analysis options configured with flutter_lints + custom rules
-- Feature module template created (empty skeleton for each module)
-- CI/CD pipeline configured (GitHub Actions) for build + test
+**Acceptance Criteria:**
+- [ ] Delivery address selector at top with dropdown showing saved addresses
+- [ ] Single vertical tab: "Food" (other tabs grayed out with "Coming soon")
+- [ ] Vendor listing as scrollable list of vendor cards (logo, name, cuisine, rating, delivery time, delivery fee)
+- [ ] Active order card at top when user has an in-progress order (status + ETA + Track/Help buttons)
+- [ ] Pull-to-refresh reloads vendor listing
+- [ ] Skeleton/shimmer loading state while fetching vendors
+- [ ] Empty state when no vendors deliver to selected address
+- [ ] Offline banner when network is unavailable
 
----
-
-#### Task F-CORE-02: API Client & Network Layer
-**Description**: Implement Dio-based API client with JWT interceptor (auto-attach token, auto-refresh on 401), error handling interceptor (map HTTP errors to domain exceptions), logging interceptor, and connectivity check. Support offline mode with cached responses.
-**Dependencies**: F-CORE-01
-**Acceptance Criteria**:
-- Dio client configured with base URL from environment config
-- Auth interceptor: attaches Bearer token to all requests (except auth endpoints)
-- Token refresh: on 401, calls refresh endpoint, retries original request
-- Error mapping: HTTP errors → domain-specific exceptions with user-friendly messages
-- Connectivity check: detect offline state, show banner
-- Request timeout: 30s default, 60s for search
-- Correlation ID header added to all requests
+**Phase:** MVP
 
 ---
 
-#### Task F-CORE-03: Theme & Design System Package
-**Description**: Create the `design_system` package with brand colors, typography, spacing tokens, and reusable components (buttons, cards, input fields, bottom sheets) following `docs/13_ui_ux_specifications.md`. Support light/dark themes and RTL layout.
-**Dependencies**: F-CORE-01
-**Acceptance Criteria**:
-- Brand colors defined: Orange (#FF5A00), Dark, Gray, Success, Warning, Error
-- Typography scale: Display → Caption using TTCommonsPro (English) + NotoSansArabic (Arabic)
-- Spacing tokens: xs(4dp) → 3xl(48dp)
-- Corner radius tokens: none(0dp) → full(50%)
-- Primary CTA, Secondary CTA, Tertiary, Icon, Floating CTA button components
-- Vendor Card, Order Card, Menu Item Card components
-- Input fields: Phone, OTP, Email, Password, Address Search, Card Number
-- Bottom Sheet component with drag handle
-- All components support RTL layout
-- Light and dark themes configured
+### T2.3 — Vendor & Menu Feature Module
+
+**Description:** The vendor detail screen showing cover image, vendor info (name, cuisine, rating, delivery time, delivery fee), and the full menu organized by categories. Supports adding items to cart with option selection via bottom sheet. Search within menu.
+
+**Dependencies:** T2.2 (navigation from home), Backend T1.2 (vendor menu API).
+
+**Acceptance Criteria:**
+- [ ] Vendor header: cover image, name, cuisine tags, rating (avg + count), delivery time range, delivery fee
+- [ ] Menu categories as horizontal scrollable tabs, scrolling to category on tap
+- [ ] Menu items: name, description, price, "Add" button; tap opens item detail bottom sheet
+- [ ] Item detail bottom sheet: image, description, required/optional option selection, quantity stepper, special instructions field, total price calculation, "Add to Cart" button
+- [ ] Sticky cart button at bottom: "View Basket (N items) · {total price}"
+- [ ] Menu search: filter items by name within current vendor
+- [ ] Unavailable items shown greyed with "Unavailable" label
+- [ ] Menu caching with ETag: serve from cache if unchanged (304 response)
+
+**Phase:** MVP
 
 ---
 
-#### Task F-CORE-04: Navigation & Routing
-**Description**: Configure GoRouter with all MVP routes, deep link support (`talabat://` scheme), and authentication guards. Routes must match the production navigation architecture from `docs/12_frontend_architecture.md` Section 6.
-**Dependencies**: F-CORE-01
-**Acceptance Criteria**:
-- All routes defined: `/`, `/search`, `/vendor/{id}`, `/cart`, `/checkout`, `/orders`, `/orders/{id}`, `/orders/{id}/tracking`, `/profile`, `/auth/login`, `/auth/signup`
-- Auth guard: unauthenticated users redirected to login for protected routes
-- Deep links: `talabat://orders/{id}/tracking` opens order tracking
-- URL-based navigation works on all platforms
-- Navigation stack preserved correctly on deep link
+### T2.4 — Cart Feature Module
+
+**Description:** Shopping cart management with item list, quantity adjustment, item removal, voucher application, and price breakdown. Single-vendor constraint enforced.
+
+**Dependencies:** T2.3 (items added from menu), Backend T1.3 (cart APIs).
+
+**Acceptance Criteria:**
+- [ ] Cart screen shows items from current vendor with quantity steppers (+/-)
+- [ ] Swipe-to-delete on cart items with confirmation
+- [ ] Voucher code input field with "Apply" button; server-side validation with error display
+- [ ] Price breakdown: subtotal, delivery fee, service fee, discount, total
+- [ ] "Clear cart" confirmation when switching vendors
+- [ ] Cart persists across app restarts (server-side cache + local SQLite)
+- [ ] Empty cart state: illustration + "Start ordering" CTA
+- [ ] Checkout CTA at bottom with total amount
+
+**Phase:** MVP
 
 ---
 
-#### Task F-CORE-05: Local Storage & Offline Foundation
-**Description**: Implement local storage layer using SharedPreferences for simple key-values and SQLite (sqflite) for structured data. Set up cache tables for vendors, menus, and cart. Implement TTL-based cache invalidation.
-**Dependencies**: F-CORE-01
-**Acceptance Criteria**:
-- SharedPreferences wrapper for: auth tokens, user preferences, feature flags, onboarding state
-- SQLite database with tables: `cached_vendors`, `cached_menus`, `cart_items`, `search_history`, `order_history`
-- Cache invalidation: TTL-based with configurable durations per data type
-- Menu cache: 5-minute TTL with ETag validation
-- Vendor cache: 5-minute TTL
-- Cart persistence: survives app restarts
-- Offline fallback: serve cached data when API unreachable with toast notification
+### T2.5 — Checkout Feature Module
+
+**Description:** The checkout flow: address selection → payment method selection → order confirmation. Streamlined from Talabat's 5-step checkout to 3 steps for MVP.
+
+**Dependencies:** T2.4 (cart data), T2.1 (auth), Backend T1.3 (order), T1.4 (payment).
+
+**Acceptance Criteria:**
+- [ ] Step 1: Address selection — default address pre-selected, option to change from saved addresses
+- [ ] Step 2: Payment method — saved cards (if any), add new card, cash on delivery
+- [ ] Step 3: Order confirmation — final summary with all items, pricing, address, payment method, "Place Order" CTA
+- [ ] Card entry via Stripe/Checkout.com SDK with client-side tokenization
+- [ ] Payment processing indicator (spinner) during authorization
+- [ ] Order success screen with order number and "Track Order" CTA
+- [ ] Error handling: payment declined → suggest alternative method; network error → retry option
+
+**Phase:** MVP
 
 ---
 
-#### Task F-CORE-06: Firebase RTDB Integration
-**Description**: Configure Firebase SDK for Flutter. Set up RTDB listeners for order tracking (status + rider location). Handle offline persistence, automatic reconnection, and listener lifecycle management.
-**Dependencies**: F-CORE-01
-**Acceptance Criteria**:
-- Firebase initialized in app startup
-- Custom auth token obtained from backend for Firebase auth
-- ValueEventListener on `order_tracking/{order_id}/status`
-- ValueEventListener on `order_tracking/{order_id}/location`
-- Offline disk persistence enabled
-- Listeners attached when entering tracking screen, detached on exit
-- Graceful handling of RTDB connection state changes
+### T2.6 — Order Tracking Feature Module
+
+**Description:** Real-time order tracking with map showing rider position, order status timeline, rider info, and action buttons (call, chat). Uses Firebase RTDB for live rider location updates.
+
+**Dependencies:** T2.5 (order placed), Backend T1.5 (dispatch), T1.3 (order status), T5.1 (Firebase RTDB integration).
+
+**Acceptance Criteria:**
+- [ ] Order tracking screen with map showing vendor location, rider position, and delivery address
+- [ ] Rider marker moves in real-time as GPS updates arrive (every 5–10 seconds)
+- [ ] Status timeline: Ordered → Preparing → On the way → Delivered (current step highlighted)
+- [ ] Rider info card: name, vehicle type, rating
+- [ ] Action buttons: Call rider (opens phone dialer), Chat (opens chat screen)
+- [ ] ETA display updated in real-time
+- [ ] "Order Delivered" confirmation with tip prompt (Phase 2: actual tip flow; MVP: dismiss only)
+- [ ] Pull-to-refresh for status updates as fallback
+
+**Phase:** MVP
 
 ---
 
-### 4.2 Auth Feature Tasks
+### T2.7 — Order History Feature Module
+
+**Description:** Paginated list of past orders with reorder capability. Each order card shows vendor name, items summary, total, status, and date.
+
+**Dependencies:** T2.1 (auth required), Backend T1.3 (order history API).
+
+**Acceptance Criteria:**
+- [ ] Order history list with infinite scroll pagination
+- [ ] Order cards: vendor name + logo, item count, total amount, status badge, date
+- [ ] Tap order card → order detail screen with full item list, pricing, delivery info
+- [ ] "Reorder" button on order detail: adds available items to cart, shows unavailable items notice
+- [ ] Empty state: "No orders yet" with "Start ordering" CTA
+- [ ] Filter tabs: All, Active, Completed, Cancelled
+
+**Phase:** MVP
 
 ---
 
-#### Task F-AUTH-01: Login & OTP Screens
-**Description**: Implement login screen with phone number input, OTP verification screen with 6-digit auto-fill boxes. Follow the production UI spec from `docs/13_ui_ux_specifications.md`. Support both login and registration flows.
-**Dependencies**: F-CORE-02, F-CORE-03
-**Acceptance Criteria**:
-- Login screen: phone number input with country flag + dial code
-- OTP screen: 6 individual digit boxes with auto-fill via sms_autofill
-- Resend OTP button with countdown timer (60 seconds)
-- OTP validation: auto-submit when all 6 digits entered
-- Error states: invalid OTP, too many attempts, network error
-- Success: store tokens, navigate to home
-- Guest mode: "Skip" button on login screen
-- All text supports English + Arabic (RTL)
+### T2.8 — Profile & Settings Feature Module
+
+**Description:** User profile management, address book, saved payment methods, notification preferences, and app settings (language, theme).
+
+**Dependencies:** T2.1 (auth), Backend T1.1 (profile APIs), T1.4 (payment methods).
+
+**Acceptance Criteria:**
+- [ ] Profile screen: name, email, phone, DOB — all editable
+- [ ] Address book: list of saved addresses, add/edit/delete, set default
+- [ ] Payment methods: list of saved cards (last 4 digits, brand, expiry), add new card, delete
+- [ ] Settings: language toggle (English/Arabic), push notification toggle
+- [ ] Logout button
+- [ ] Account deletion request (per app store requirements)
+
+**Phase:** MVP
 
 ---
 
-#### Task F-AUTH-02: Social Login Integration
-**Description**: Implement Google Sign-In and Apple Sign-In buttons on login screen. Handle account linking flow when social account matches existing user.
-**Dependencies**: F-AUTH-01
-**Acceptance Criteria**:
-- Google Sign-In using google_sign_in package
-- Apple Sign-In using sign_in_with_apple package
-- Social tokens sent to backend for verification
-- New user: auto-registered with provider info
-- Existing user: logged in with JWT tokens
-- Account linking dialog if email/phone matches different account
+## Infrastructure Tasks
+
+### T2.9 — Design System Package
+
+**Description:** Creates the shared `design_system` Flutter package with the MM3-inspired theme: brand colors (orange primary), typography scale, spacing system, corner radius tokens, and reusable UI components (buttons, cards, input fields, bottom sheets). Supports light and dark themes with RTL layout for Arabic.
+
+**Dependencies:** None (foundational).
+
+**Acceptance Criteria:**
+- [ ] Color tokens: primary orange (#FF5A00), dark (#1A1A2E), gray, success, warning, error
+- [ ] Typography scale: Display, H1, H2, H3, Body1, Body2, Caption, Button, Overline
+- [ ] Spacing tokens: xs(4), sm(8), md(12), lg(16), xl(24), 2xl(32), 3xl(48)
+- [ ] Corner radius tokens: none(0), sm(4), md(8), lg(12), xl(16), full(50%)
+- [ ] Reusable components: PrimaryButton, SecondaryButton, VendorCard, CartItemCard, InputField, SearchBar, BottomSheet
+- [ ] Light and dark theme support
+- [ ] RTL layout support for Arabic (directional spacing, mirrored icons)
+- [ ] Minimum touch target 48x48dp for all interactive elements
+
+**Phase:** MVP
 
 ---
 
-#### Task F-AUTH-03: Registration Screen
-**Description**: Implement registration form with fields: first_name, last_name, email, phone, password, date_of_birth. Include terms/privacy consent checkboxes.
-**Dependencies**: F-AUTH-01
-**Acceptance Criteria**:
-- All required fields validated before submission
-- Email format validation
-- Password: min 8 chars with complexity
-- Date of birth picker (must be 13+)
-- Terms & privacy consent required
-- Marketing opt-in checkbox (optional)
-- Success: auto-login and navigate to home
+### T2.10 — Navigation & Routing
+
+**Description:** Sets up declarative routing using `go_router` with deep link support. Defines all route paths matching the full architecture's navigation structure (simplified for MVP routes).
+
+**Dependencies:** T2.9 (design system for page transitions).
+
+**Acceptance Criteria:**
+- [ ] Route definitions: /, /search, /vendor/{id}, /cart, /checkout, /orders, /orders/{id}, /orders/{id}/tracking, /profile, /settings, /auth/login
+- [ ] Deep link support: `talabat://` scheme for order tracking, vendor pages
+- [ ] Auth guard: redirects unauthenticated users to login for protected routes
+- [ ] Page transition animations (300ms ease-out)
+- [ ] Back navigation works correctly on all screens
+
+**Phase:** MVP
 
 ---
 
-### 4.3 Home Feature Tasks
+### T2.11 — Localization (English + Arabic)
+
+**Description:** Implements bilingual support with English (LTR) and Arabic (RTL). Uses Flutter's `l10n` package with ARB files. All user-facing strings are externalized.
+
+**Dependencies:** T2.9 (design system RTL support).
+
+**Acceptance Criteria:**
+- [ ] All UI strings in `app_en.arb` and `app_ar.arb` files
+- [ ] Language switching in settings without app restart
+- [ ] RTL layout flips correctly: text alignment, icons, navigation direction
+- [ ] Bidirectional text support (Arabic + English mixed content)
+- [ ] Currency formatting: AED for MVP (extensible to other currencies)
+- [ ] Number formatting respects locale (Arabic-Indic numerals in Arabic mode)
+
+**Phase:** MVP
 
 ---
 
-#### Task F-HOME-01: Home Screen Layout
-**Description**: Implement the home screen following `docs/13_ui_ux_specifications.md` Section 4.2. Include: location selector, search bar, vertical tabs (Food), active order card, offers carousel, vendor listing.
-**Dependencies**: F-CORE-03, F-CORE-04, F-VENDOR-01 (for vendor cards)
-**Acceptance Criteria**:
-- Location bar at top: "Delivering to {area}" with dropdown
-- Search bar with placeholder: "Search for food or groceries"
-- Vertical tab row: Food (only vertical for MVP)
-- Active order card (if any): status, vendor name, ETA, Track/Help buttons
-- Offers carousel: horizontal swipe of vendor cards with offers
-- Popular near you: vertical list of vendor cards
-- Bottom navigation: Home, Search, Orders, Profile
-- Pull-to-refresh refreshes all sections
-- Skeleton/shimmer loading states for all sections
+### T2.12 — Network & Offline Layer
+
+**Description:** Implements the HTTP client with interceptors for auth token injection, refresh token handling, and error mapping. Adds offline support with cached data for vendor listings and menus when network is unavailable.
+
+**Dependencies:** T2.1 (auth tokens for interceptor).
+
+**Acceptance Criteria:**
+- [ ] HTTP client with base URL configuration (per environment: dev, staging, production)
+- [ ] Auth interceptor adds Bearer token to all requests; handles 401 with token refresh
+- [ ] Error mapping: HTTP status codes → user-friendly error messages
+- [ ] Connectivity monitoring: shows offline banner when network is lost
+- [ ] Cached vendor listings served when offline with "You're offline" notice
+- [ ] Cart operations queued locally when offline, replayed on reconnection
+
+**Phase:** MVP
 
 ---
 
-#### Task F-HOME-02: Location & Address Selection
-**Description**: Implement address selection bottom sheet with saved addresses list and map-based address picker. Default address pre-selected.
-**Dependencies**: F-HOME-01
-**Acceptance Criteria**:
-- Tapping location bar opens address bottom sheet
-- Saved addresses listed with label, area, building info
-- "Add new address" option opens map picker
-- Map picker: drag pin to set location, reverse geocode to area name
-- New address form: label, building, floor, apartment, delivery instructions
-- Default address auto-selected on app launch
-- Address selection triggers vendor list refresh for new area
+## Phase 2 Frontend Tasks (Not for MVP)
 
----
+### T2.P2.1 — Q-Commerce (Grocery) Feature Module
+**Description:** Grocery vertical with finite stock items, category browsing, shopping lists, and item replacement flow. Requires backend inventory service.
+**Phase:** Phase 2
 
-### 4.4 Search Feature Tasks
+### T2.P2.2 — Pharmacy Feature Module
+**Description:** Pharmacy vertical with prescription upload, insurance integration, and age-restricted items.
+**Phase:** Phase 2
 
----
+### T2.P2.3 — DineOut Feature Module
+**Description:** Restaurant reservations with capacity-based availability, BOGO packages, and bill payment.
+**Phase:** Phase 2
 
-#### Task F-SEARCH-01: Search Screen & Autocomplete
-**Description**: Implement search screen with autocomplete suggestions, recent searches, and search results. Follow `docs/16_search_discovery_system.md` spec for autocomplete UI.
-**Dependencies**: F-CORE-02, F-CORE-03
-**Acceptance Criteria**:
-- Search bar with auto-focus on screen open
-- As user types: autocomplete suggestions appear (debounced 300ms)
-- Recent searches shown (stored locally, max 10)
-- Suggestions: vendor names, item names, category suggestions
-- "Search for {query} in Food" deep link option
-- Clear search button
-- Empty state: "No results for {query}" with suggestions
-- Search results: vendor cards + item cards (combined view)
+### T2.P2.4 — Wallet & BNPL Feature Modules
+**Description:** talabat Pay wallet (balance, top-up, transactions) and PostPaid BNPL (installment dashboard, payment, rewind).
+**Phase:** Phase 2
 
----
+### T2.P2.5 — Subscription (Pro) Feature Module
+**Description:** Pro subscription management, plan selection, free delivery benefits, family plans.
+**Phase:** Phase 2
 
-#### Task F-SEARCH-02: Search Results & Filtering
-**Description**: Implement search results view with vendor and item sections, sort/filter bottom sheet, and result caching.
-**Dependencies**: F-SEARCH-01
-**Acceptance Criteria**:
-- Results split into: Restaurants section + Dishes section
-- Sort options: Recommended, Delivery time, Rating, Distance
-- Filter options: Cuisine, Offers, Free delivery, Open now
-- Active filters shown as chips with remove option
-- Results cached locally for 5 minutes
-- Cached results shown when offline with appropriate messaging
-- Tap vendor card → navigate to vendor detail
-- Tap item card → navigate to vendor menu (scroll to item)
+### T2.P2.6 — Rewards Feature Module
+**Description:** Loyalty points balance, earn/spend history, burn options (free delivery, money off, charity).
+**Phase:** Phase 2
 
----
+### T2.P2.7 — AI Chat Feature Module
+**Description:** ChatGPT integration for conversational food discovery and order support.
+**Phase:** Phase 2
 
-### 4.5 Vendor & Menu Feature Tasks
+### T2.P2.8 — HMS (Huawei Mobile Services) Support
+**Description:** Dual platform services for HMS devices: Huawei Maps, HMS Push Kit, Huawei ID auth.
+**Phase:** Phase 2
 
----
+### T2.P2.9 — Performance Optimization
+**Description:** Baseline profiles, deferred component loading, image caching optimization, HTTP/2 experimentation.
+**Phase:** Phase 2
 
-#### Task F-VENDOR-01: Vendor Detail & Menu Screen
-**Description**: Implement vendor detail screen with cover image, info section, and scrollable menu following `docs/13_ui_ux_specifications.md` Section 4.3. Menu items shown in categories with Add buttons.
-**Dependencies**: F-CORE-02, F-CORE-03
-**Acceptance Criteria**:
-- Cover image (200dp) with back button overlay
-- Vendor info: name, cuisine, rating, delivery time, delivery fee
-- Offer badges (if any)
-- Menu search bar
-- Category headers as sticky section dividers
-- Menu items: name, description, price, Add button
-- Unavailable items: shown greyed with "Out of stock" label
-- Floating cart button at bottom: "View Basket ({count}) - {total}"
-- Pull-to-refresh refreshes menu data
-- Skeleton loading for initial menu load
-
----
-
-#### Task F-VENDOR-02: Item Detail Bottom Sheet
-**Description**: Implement item detail bottom sheet with image, description, option selection (required/optional), quantity stepper, special instructions, and Add to Cart button. Follow the production spec from `docs/13_ui_ux_specifications.md`.
-**Dependencies**: F-VENDOR-01, F-CART-01
-**Acceptance Criteria**:
-- Bottom sheet opens on item tap
-- Item image, name, description, base price displayed
-- Required options: must select before Add button enabled
-- Optional options: can skip or select up to max_selections
-- Price updates dynamically based on option choices
-- Quantity stepper: +/- buttons with min 1
-- Special instructions text field (max 200 chars)
-- "Add to Cart - {total_price}" button at bottom
-- Cart badge updates with bounce animation on add
-- Accessibility: "Item successfully added to cart" announcement
-
----
-
-### 4.6 Cart Feature Tasks
-
----
-
-#### Task F-CART-01: Cart Screen
-**Description**: Implement cart screen showing items from current vendor, with quantity controls, item removal (swipe-to-delete), subtotal, delivery fee, service fee, voucher field, and checkout CTA.
-**Dependencies**: F-CORE-02, F-CORE-03
-**Acceptance Criteria**:
-- Items listed with name, selected options, quantity, price
-- Quantity stepper (+/-) on each item
-- Swipe-to-delete with confirmation
-- Subtotal, delivery fee, service fee, discount (if voucher), total
-- Voucher input field with "Apply" button
-- Checkout CTA: "Place Order - {total}"
-- Cross-vendor dialog: "Clear cart and start new order?" when switching vendors
-- Empty cart state: "Your cart is empty"
-- Cart persists across app restarts (server-side + local)
-
----
-
-#### Task F-CART-02: Voucher Application
-**Description**: Implement voucher code input with validation. Show discount applied or error message. Support BIN-voucher error handling (payment method mismatch).
-**Dependencies**: F-CART-01
-**Acceptance Criteria**:
-- Voucher input field: uppercase transformation
-- "Apply" button triggers server validation
-- Success: discount shown in price breakdown
-- Error: "Invalid voucher code" / "Voucher expired" / "Minimum order not met"
-- BIN voucher error: "This voucher requires a specific card type" with change/remove options
-- Only one voucher per cart
-- Voucher removal: tap X on applied voucher
-
----
-
-### 4.7 Checkout Feature Tasks
-
----
-
-#### Task F-CHECKOUT-01: Checkout Flow
-**Description**: Implement multi-step checkout: Address confirmation → Time selection (ASAP only for MVP) → Payment selection → Order confirmation. Follow production spec from `docs/06_order_management_system.md` Section 4.
-**Dependencies**: F-CART-01, F-PAY-01
-**Acceptance Criteria**:
-- Step 1: Address pre-selected (default), change address button
-- Step 2: Delivery time "ASAP" (estimated {min}-{max} min)
-- Step 3: Payment method selection (card, cash, add new card)
-- Order summary: items, pricing breakdown
-- "Place Order" CTA with price
-- Loading state during order placement
-- Success: navigate to order tracking
-- Error: specific messages for payment failure, item unavailable, etc.
-- Offline: "You're offline. Check your connection." message
-
----
-
-### 4.8 Payment Feature Tasks
-
----
-
-#### Task F-PAY-01: Payment Methods Screen
-**Description**: Implement payment method selection screen. Show saved cards (masked), Apple Pay / Google Pay, cash, and "Add new card" option. Follow production payment flow from `docs/14_payment_system.md`.
-**Dependencies**: F-CORE-02, F-CORE-03
-**Acceptance Criteria**:
-- Saved cards shown with last four digits, brand icon, expiry
-- Apple Pay button (iOS only, conditional availability check)
-- Google Pay button (Android only, conditional availability check)
-- Cash on Delivery option
-- "Add new card" opens card entry form
-- Default payment method pre-selected
-- Card entry uses Stripe.js tokenization (no raw data to our server)
-
----
-
-#### Task F-PAY-02: Card Entry & 3DS
-**Description**: Implement card entry form with Stripe card element. Handle 3D Secure authentication flow for card payments.
-**Dependencies**: F-PAY-01
-**Acceptance Criteria**:
-- Card number input with brand detection and formatting
-- Expiry date input (MM/YY)
-- CVV input (obscured)
-- Cardholder name input
-- Real-time validation: Luhn check, expiry check
-- 3DS challenge: open in WebView if required by issuer
-- 3DS success: payment proceeds
-- 3DS failure: "Authentication failed, try again"
-- Token stored for future use (save card checkbox)
-
----
-
-### 4.9 Order Feature Tasks
-
----
-
-#### Task F-ORDER-01: Order History Screen
-**Description**: Implement order history list with order cards showing vendor name, items summary, total, status, date. Support reorder action.
-**Dependencies**: F-CORE-02, F-CORE-03
-**Acceptance Criteria**:
-- Orders listed chronologically (most recent first)
-- Each card: vendor name, items count, total, status badge, date
-- Active orders shown at top with "Track" button
-- Past orders shown with "Reorder" button
-- Pull-to-refresh
-- Empty state: "No orders yet" with "Start ordering" CTA
-- Pagination: load more on scroll
-
----
-
-#### Task F-ORDER-02: Order Detail Screen
-**Description**: Implement order detail screen showing full order info: status timeline, items, pricing, delivery info, rider info (if assigned), and action buttons (track, cancel, reorder).
-**Dependencies**: F-ORDER-01
-**Acceptance Criteria**:
-- Order status timeline with visual indicators
-- Items list with quantities, options, prices
-- Pricing breakdown: subtotal, delivery fee, service fee, discount, tip, total
-- Delivery address
-- Rider info: name, vehicle, rating (when assigned)
-- Cancel button (visible only during cancellation window)
-- Reorder button
-- Help / support link
-- Order modification display (if any modifications occurred)
-
----
-
-#### Task F-ORDER-03: Order Tracking Screen with Live Map
-**Description**: Implement real-time order tracking screen following `docs/13_ui_ux_specifications.md` Section 4.4. Include live map with rider position, status indicator, ETA, and action buttons (call, chat, tip).
-**Dependencies**: F-ORDER-02, F-CORE-06
-**Acceptance Criteria**:
-- Map view showing: vendor location, rider position, delivery address
-- Rider icon moves in real-time (updated via Firebase RTDB listener)
-- Status indicator: Ordered / Preparing / On the way / Delivered
-- Rider info: name, vehicle, rating
-- ETA display: "12 minutes" (updates every 30 seconds)
-- Action buttons: Call rider, Chat, Tip (after delivery)
-- Order details expandable section below map
-- Map uses Google Maps (Google Play Services devices)
-- Offline: last known rider position shown with "Reconnecting..." indicator
-
----
-
-### 4.10 Profile Feature Tasks
-
----
-
-#### Task F-PROFILE-01: Profile & Settings Screen
-**Description**: Implement profile screen showing user info, saved addresses, payment methods, notification preferences, and app settings.
-**Dependencies**: F-CORE-02, F-CORE-03
-**Acceptance Criteria**:
-- User info: name, email, phone (editable)
-- Saved addresses list with edit/delete
-- Payment methods list with add/remove
-- Notification preferences toggle
-- Language selection (English / Arabic)
-- Dark mode toggle
-- Logout button
-- About / Legal links
-
----
-
-### 4.11 Chat Feature Tasks (P1)
-
----
-
-#### Task F-CHAT-01: Rider-Customer Chat
-**Description**: Implement in-app chat between customer and rider during active delivery. Use Firebase RTDB for real-time messaging. Support predefined quick messages and text input.
-**Dependencies**: F-CORE-06, F-ORDER-03
-**Acceptance Criteria**:
-- Chat screen accessible from order tracking screen
-- Real-time messages via Firebase RTDB listener
-- Predefined messages: "I'm at the gate", "Come to lobby", "Leave at door"
-- Text input with send button
-- Message timestamps and read status
-- Push notification for new messages when chat screen not visible
-- Chat disabled after order delivered (read-only)
-
----
-
-## 5. State Management Patterns
-
-### 5.1 BLoC/Cubit Convention
-
-Every feature module uses BLoC/Cubit following this pattern:
-
-```
-FeatureBloc / FeatureCubit
-├── Events/States clearly typed
-├── Delegates to use cases for business logic
-├── Emits new states on event processing
-├── Never directly accesses repositories (use cases mediate)
-```
-
-### 5.2 Key BLoC Interactions
-
-```
-CartBloc ──── adds item ────→ MenuBloc (update item count in menu)
-CartBloc ──── clears cart ────→ VendorBloc (reset vendor context)
-OrderBloc ──── places order ───→ CartBloc (clear cart on success)
-TrackingBloc ──── status change ───→ HomeBloc (update active order card)
-PaymentBloc ──── payment success ───→ OrderBloc (confirm order)
-```
-
----
-
-## 6. Performance Targets
-
-| Metric | Target (High-End) | Target (Low-End) | Measurement |
-|--------|--------------------|-------------------|-------------|
-| App startup TTI | < 1.5s | < 3s | Time to interactive home screen |
-| Home screen TTI | < 1s | < 2s | Time from navigation to interactive |
-| Menu load time | < 1s | < 2s | Time from tap to menu rendered |
-| Order placement | < 2s | < 3s | Time from tap to confirmation |
-| Search results | < 500ms | < 1s | Time from query to results |
-| Tracking map update | < 2s | < 3s | Rider position update latency |
-
----
-
-## 7. Testing Strategy
-
-| Type | Framework | Coverage Target | Scope |
-|------|-----------|----------------|-------|
-| Unit tests | flutter_test | 80%+ | BLoCs, use cases, repositories, mappers |
-| Widget tests | flutter_test | 70%+ | Individual widgets, screens |
-| Integration tests | integration_test | Key flows | Login → Order → Track |
-| Golden tests | golden_toolkit | Core components | Design system components |
-
-### Critical Integration Test Flows
-
-1. **Happy path**: Login → Browse → Add to cart → Checkout → Track order → Delivery
-2. **Offline resilience**: Browse → Lose network → Cart operations → Reconnect → Sync
-3. **RTL layout**: Switch to Arabic → All screens display correctly
-4. **Payment flow**: Add card → 3DS challenge → Payment success/failure
+### T2.P2.10 — Advanced Search with Elasticsearch
+**Description:** Full-text search with Arabic tokenization, autocomplete, multi-search, photo-to-list, and sponsored content.
+**Phase:** Phase 2
